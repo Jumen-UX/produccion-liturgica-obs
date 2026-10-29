@@ -12,7 +12,7 @@ AppPublisher=Comunidad Producción Litúrgica OBS
 DefaultDirName={localappdata}\Programs\ProduccionLiturgicaOBS
 DefaultGroupName={#MyAppName}
 PrivilegesRequired=lowest
-OutputDir=dist\installer
+OutputDir=..\dist\installer
 OutputBaseFilename=ProduccionLiturgicaOBS-Setup
 Compression=lzma2
 SolidCompression=yes
@@ -23,7 +23,7 @@ CloseApplications=yes
 RestartApplications=no
 
 [Files]
-Source: "dist\ProduccionLiturgicaOBS.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\dist\ProduccionLiturgicaOBS.exe"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
 Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
