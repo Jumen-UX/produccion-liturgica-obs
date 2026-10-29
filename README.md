@@ -11,7 +11,18 @@ Sistema local y configurable de gráficos para transmisiones de celebraciones li
 - Separación entre preparación y publicación en OBS.
 - Botones para limpiar/restaurar gráficos y cierre protegido.
 
-## Instalación en Windows
+## Descargas de Windows (al publicar una versión)
+
+- Instalador: `ProduccionLiturgicaOBS-Setup.exe`, instalación por usuario, accesos directos y desinstalación.
+- Portátil: `ProduccionLiturgicaOBS-Portable.zip`, descomprimir y abrir el EXE.
+- Ninguna descarga necesita Python en el PC del operador.
+- Los datos de cada parroquia se conservan en `%LOCALAPPDATA%\ProduccionLiturgicaOBS` fuera de la carpeta del programa.
+
+### GitHub Actions
+
+El flujo `.github/workflows/windows-release.yml` compila y prueba el ejecutable, crea instalador y ZIP. Los pull requests generan artefactos de prueba. Solo las etiquetas `vX.Y.Z` publican en GitHub Releases. **No publicar versiones estables sin validar en Windows y OBS.**
+
+## Instalación en Windows (código fuente)
 
 1. Extraer todo el ZIP a una carpeta **con permiso de escritura** (por ejemplo Documentos\Produccion-Liturgica). No ejecutarlo desde dentro del ZIP ni desde Archivos de programa.
 2. Con Python 3 instalado, ejecutar `INICIAR_SIN_EXE.bat`; o construir el ejecutable usando `CREAR_EXE_WINDOWS.bat` desde Windows con Python 3.
