@@ -6,17 +6,36 @@ import json, copy, time, uuid, re, threading, os
 ROOT=Path(os.environ.get("LITURGIA_APP_DIR",Path(__file__).resolve().parent)).resolve()
 DATA=ROOT/"configuracion.json"
 LOCK=threading.RLock()
+LOWER_DEFAULT={"template":"classic","enter":"fade","exit":"fade","duration":650,"opacity":94,"background":"#152941","accent":"#D6B678","name":"Nombre del participante","role":"Participante","subtitle":""}
+LOWER_TEMPLATES={"classic","minimal","liturgical","modern"}
+LOWER_EFFECTS={"fade","left","right","rise","zoom","none"}
+def validated_lower_third(value):
+    if not isinstance(value,dict):raise ValueError("Lower Third inválido")
+    unknown=set(value)-set(LOWER_DEFAULT)
+    if unknown:raise ValueError("Propiedad de Lower Third desconocida")
+    result={**LOWER_DEFAULT,**value}
+    if result["template"] not in LOWER_TEMPLATES:raise ValueError("Plantilla inválida")
+    if result["enter"] not in LOWER_EFFECTS or result["exit"] not in LOWER_EFFECTS:raise ValueError("Animación inválida")
+    for field in ("background","accent"):
+        if not isinstance(result[field],str) or not re.fullmatch(r"#[a-fA-F0-9]{6}",result[field]):raise ValueError("Color inválido")
+    for field,limit in (("name",85),("role",55),("subtitle",90)):
+        result[field]=str(result[field])[:limit]
+    result["duration"]=max(150,min(2500,int(result["duration"])))
+    result["opacity"]=max(25,min(100,int(result["opacity"])))
+    return result
 DEFAULT={
-"parish_name":"Mi parroquia","mode":"espera","title":"Santa Misa","subtitle":"Bienvenidos a nuestra celebración","detail":"Bienvenidos","reference":"","visible":True,"logo":"","ticker":"","ticker_visible":False,"announcements":["Gracias por acompañarnos","En breve comenzaremos"],"slides":[],"slides_enabled":True,"slide_interval":12,"cover_mode":"default","cover_image":"","social_enabled":False,"social_closing":True,"social_accounts":{"instagram":"","facebook":"","youtube":"","whatsapp":""},"social_qr":"","social_during_mass":False,"social_every":150,"social_duration":9,"social_now":None,"logo_persistent":True,"logo_video":"","participants":{"celebrante":"","diacono":"","lectores":["",""],"monitores":[""]},"role":"celebrante","role_index":0,"theme":"ordinario","colors":{"primary":"#2E986E","background":"#0A1C29","accent":"#D6B678","text":"#F4F7F9","panel":"#102C35"},"timer_minutes":15,"remaining":900,"running":False,"end_at":None}
+"parish_name":"Mi parroquia","mode":"espera","title":"Santa Misa","subtitle":"Bienvenidos a nuestra celebración","detail":"Bienvenidos","reference":"","visible":True,"logo":"","ticker":"","ticker_visible":False,"announcements":["Gracias por acompañarnos","En breve comenzaremos"],"slides":[],"slides_enabled":True,"slide_interval":12,"cover_mode":"default","cover_image":"","social_enabled":False,"social_closing":True,"social_accounts":{"instagram":"","facebook":"","youtube":"","whatsapp":""},"social_qr":"","social_during_mass":False,"social_every":150,"social_duration":9,"social_now":None,"logo_persistent":True,"logo_video":"","participants":{"celebrante":"","diacono":"","lectores":["",""],"monitores":[""]},"role":"celebrante","role_index":0,"theme":"ordinario","colors":{"primary":"#2E986E","background":"#0A1C29","accent":"#D6B678","text":"#F4F7F9","panel":"#102C35"},"lower_third":copy.deepcopy(LOWER_DEFAULT),"timer_minutes":15,"remaining":900,"running":False,"end_at":None}
 try:
     saved=json.loads(DATA.read_text(encoding="utf-8"))
     draft={**DEFAULT,**{k:v for k,v in saved.items() if k in DEFAULT and k not in ("running","end_at","remaining")}}
 except (ValueError,OSError):
     draft=copy.deepcopy(DEFAULT)
+try:draft["lower_third"]=validated_lower_third(draft.get("lower_third",{}))
+except (ValueError,TypeError):draft["lower_third"]=copy.deepcopy(LOWER_DEFAULT)
 live=copy.deepcopy(draft)
 live.update(running=False,end_at=None,remaining=int(live["timer_minutes"])*60)
 EDIT=set(DEFAULT)-{"running","end_at","remaining","logo","timer_minutes"}
-MODES={"espera","cintillo","lectura","salmo","evangelio","homilia","ofertorio","comunion","avisos","cierre","limpio","incidencia","participante"}
+MODES={"espera","cintillo","lectura","salmo","evangelio","homilia","ofertorio","comunion","avisos","cierre","limpio","incidencia","participante","lower_third"}
 THEMES={"ordinario","adviento","navidad","cuaresma","pascua","pentecostes","martires","blanco","rojo","verde","morado","rosa","negro","personalizado"}
 MEDIA_RE=re.compile(r"^/media/[a-f0-9]{32}\.(?:png|jpg|webp|mp4|webm)$")
 def persist():
@@ -32,6 +51,9 @@ def sanitized(updates):
     for k,v in updates.items():
         if k not in EDIT:continue
         if k=="mode" and v not in MODES:raise ValueError("Modo inválido")
+        if k=="lower_third":
+            if not isinstance(v,dict):raise ValueError("Lower Third inválido")
+            v=validated_lower_third({**draft["lower_third"],**v})
         if k=="theme" and v not in THEMES:raise ValueError("Perfil inválido")
         if k=="colors":
             if not isinstance(v,dict) or any(not re.fullmatch(r"#[a-fA-F0-9]{6}",v.get(c,"")) for c in ("primary","background","accent","text","panel")):raise ValueError("Colores inválidos")

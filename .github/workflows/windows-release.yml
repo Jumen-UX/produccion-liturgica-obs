@@ -1,0 +1,119 @@
+name: Windows · compilar y distribuir
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 35
+    steps:
+      - name: Obtener el código
+        uses: actions/checkout@v4
+
+      - name: Instalar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Probar el código Python
+        shell: pwsh
+        run: |
+          python -m compileall -q launcher.py servidor.py
+          python -m unittest discover -s tests -p 'test_*.py' -v
+          python -m pip install --disable-pip-version-check pyinstaller pystray pillow
+
+      - name: Compilar ejecutable portátil
+        shell: pwsh
+        run: |
+          pyinstaller --noconfirm --clean --onefile --windowed --name ProduccionLiturgicaOBS --add-data "panel.html;." --add-data "overlay.html;." --add-data "dock.html;." --add-data "studio.html;." --hidden-import pystray._win32 launcher.py
+          if (!(Test-Path "dist/ProduccionLiturgicaOBS.exe")) { throw "No se generó el ejecutable" }
+
+      - name: Probar inicio y servidor HTTP
+        shell: pwsh
+        run: |
+          $p = Start-Process -FilePath (Resolve-Path "dist/ProduccionLiturgicaOBS.exe") -PassThru
+          try {
+            $ready = $false
+            for ($i = 0; $i -lt 45; $i++) {
+              Start-Sleep -Seconds 1
+              if ($p.HasExited) { throw "El ejecutable terminó inesperadamente" }
+              try {
+                $state = Invoke-RestMethod -Uri "http://127.0.0.1:8765/api/state" -TimeoutSec 2
+                $page = Invoke-WebRequest -Uri "http://127.0.0.1:8765/panel.html" -TimeoutSec 2
+                $overlay = Invoke-WebRequest -Uri "http://127.0.0.1:8765/overlay.html" -TimeoutSec 2
+                $dock = Invoke-WebRequest -Uri "http://127.0.0.1:8765/dock.html" -TimeoutSec 2
+                $studio = Invoke-WebRequest -Uri "http://127.0.0.1:8765/studio.html" -TimeoutSec 2
+                if ($state.parish_name -and $page.StatusCode -eq 200 -and $overlay.StatusCode -eq 200 -and $dock.StatusCode -eq 200 -and $studio.StatusCode -eq 200) { $ready = $true; break }
+              } catch { }
+            }
+            if (!$ready) { throw "El panel y el overlay no respondieron" }
+          } finally {
+            if (!$p.HasExited) { Stop-Process -Id $p.Id -Force }
+          }
+
+      - name: Crear ZIP portátil
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path "dist/portable" | Out-Null
+          Copy-Item "dist/ProduccionLiturgicaOBS.exe" "dist/portable/"
+          Copy-Item "README.md" "dist/portable/LEEME.md"
+          Compress-Archive -Path "dist/portable/*" -DestinationPath "dist/ProduccionLiturgicaOBS-Portable.zip" -Force
+
+      - name: Instalar Inno Setup
+        shell: pwsh
+        run: |
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (!(Test-Path $iscc)) {
+            choco install innosetup --no-progress -y
+          }
+          if (!(Test-Path $iscc)) { throw "Inno Setup no está disponible" }
+
+      - name: Crear instalador Windows
+        shell: pwsh
+        run: |
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          $version = "${{ github.ref_type == 'tag' && github.ref_name || '0.1.0-dev' }}"
+          & $iscc "/DMyAppVersion=$version" "installer/windows.iss"
+          if ($LASTEXITCODE -ne 0) { throw "Falló el instalador" }
+
+      - name: Subir compilados para revisión
+        uses: actions/upload-artifact@v4
+        with:
+          name: produccion-liturgica-obs-windows
+          path: |
+            dist/ProduccionLiturgicaOBS-Portable.zip
+            dist/installer/ProduccionLiturgicaOBS-Setup.exe
+          if-no-files-found: error
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: windows
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Recuperar instalador y ZIP
+        uses: actions/download-artifact@v4
+        with:
+          name: produccion-liturgica-obs-windows
+          path: release
+      - name: Publicar GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          gh release create "${GITHUB_REF_NAME}" \
+            release/ProduccionLiturgicaOBS-Portable.zip \
+            release/installer/ProduccionLiturgicaOBS-Setup.exe \
+            --repo "${GITHUB_REPOSITORY}" \
+            --title "Producción Litúrgica OBS ${GITHUB_REF_NAME}" \
+            --generate-notes

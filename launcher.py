@@ -10,13 +10,16 @@ from http.server import ThreadingHTTPServer
 
 # Archivos HTML empaquetados con PyInstaller se leen desde _MEIPASS.
 # Datos y multimedia permanecen junto al ejecutable.
-APP_DIR = Path(sys.executable).resolve().parent if getattr(sys, "frozen", False) else Path(__file__).resolve().parent
+APP_DIR = (Path(os.environ.get("LOCALAPPDATA") or Path.home()) / "ProduccionLiturgicaOBS") if getattr(sys, "frozen", False) else Path(__file__).resolve().parent
+APP_DIR.mkdir(parents=True, exist_ok=True)
 RES_DIR = Path(getattr(sys, "_MEIPASS", APP_DIR))
 os.environ["LITURGIA_APP_DIR"] = str(APP_DIR)
-for filename in ("panel.html", "overlay.html"):
+for filename in ("panel.html", "overlay.html", "dock.html", "studio.html"):
     destination = APP_DIR / filename
-    if not destination.exists() and (RES_DIR / filename).exists():
-        destination.write_bytes((RES_DIR / filename).read_bytes())
+    source = RES_DIR / filename
+    if source.exists() and source.resolve() != destination.resolve():
+        # Reemplazar recursos del programa en cada actualización, nunca medios o configuración del usuario.
+        destination.write_bytes(source.read_bytes())
 import servidor
 
 HOST="127.0.0.1"
