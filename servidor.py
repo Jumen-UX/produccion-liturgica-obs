@@ -7,7 +7,7 @@ ROOT=Path(os.environ.get("LITURGIA_APP_DIR",Path(__file__).resolve().parent)).re
 DATA=ROOT/"configuracion.json"
 LOCK=threading.RLock()
 DEFAULT={
-"parish_name":"Mi parroquia","mode":"espera","title":"Santa Misa","subtitle":"Bienvenidos a nuestra celebración","detail":"Bienvenidos","reference":"","visible":True,"logo":"","ticker":"","ticker_visible":False,"announcements":["Gracias por acompañarnos","En breve comenzaremos"],"slides":[],"slides_enabled":True,"slide_interval":12,"cover_mode":"default","cover_image":"","social_enabled":False,"social_closing":True,"social_accounts":{"instagram":"","facebook":"","youtube":"","whatsapp":""},"social_qr":"","social_during_mass":False,"social_every":150,"social_duration":9,"social_now":None,"logo_persistent":True,"logo_video":"","participants":{"celebrante":"","diacono":"","lectores":["",""],"monitores":[""]},"role":"celebrante","role_index":0,"theme":"ordinario","colors":{"primary":"#2E986E","background":"#0A1C29","accent":"#D6B678","text":"#F4F7F9","panel":"#102C35"},"timer_minutes":15,"remaining":900,"running":False,"end_at":None}
+"parish_name":"Mi parroquia","mode":"espera","title":"Santa Misa","subtitle":"Bienvenidos a nuestra celebración","detail":"Bienvenidos","reference":"","visible":True,"logo":"","ticker":"","ticker_visible":False,"announcements":["Gracias por acompañarnos","En breve comenzaremos"],"slides":[],"slides_enabled":True,"slide_interval":12,"cover_mode":"default","cover_image":"","social_enabled":False,"social_closing":True,"social_accounts":{"instagram":"","facebook":"","youtube":"","whatsapp":""},"social_qr":"","social_during_mass":False,"social_every":150,"social_duration":9,"social_now":None,"logo_persistent":True,"logo_video":"","participants":{"celebrante":"","diacono":"","salmista":"","lectores":["",""],"monitores":[""]},"role":"celebrante","role_index":0,"salmo_respuesta":"","theme":"ordinario","colors":{"primary":"#2E986E","background":"#0A1C29","accent":"#D6B678","text":"#F4F7F9","panel":"#102C35"},"timer_minutes":15,"remaining":900,"running":False,"end_at":None}
 try:
     saved=json.loads(DATA.read_text(encoding="utf-8"))
     draft={**DEFAULT,**{k:v for k,v in saved.items() if k in DEFAULT and k not in ("running","end_at","remaining")}}
@@ -37,7 +37,7 @@ def sanitized(updates):
             if not isinstance(v,dict) or any(not re.fullmatch(r"#[a-fA-F0-9]{6}",v.get(c,"")) for c in ("primary","background","accent","text","panel")):raise ValueError("Colores inválidos")
         if k=="participants":
             if not isinstance(v,dict):raise ValueError("Participantes inválidos")
-            v={"celebrante":str(v.get("celebrante",""))[:110],"diacono":str(v.get("diacono",""))[:110],"lectores":[str(s)[:110] for s in v.get("lectores",[])[:12]],"monitores":[str(s)[:110] for s in v.get("monitores",[])[:12]]}
+            v={"celebrante":str(v.get("celebrante",""))[:110],"diacono":str(v.get("diacono",""))[:110],"salmista":str(v.get("salmista",""))[:110],"lectores":[str(s)[:110] for s in v.get("lectores",[])[:12]],"monitores":[str(s)[:110] for s in v.get("monitores",[])[:12]]}
         if k=="slides":
             if not isinstance(v,list):raise ValueError("Avisos inválidos")
             v=[{"title":str(s.get("title",""))[:110],"body":str(s.get("body",""))[:350],"photo":s.get("photo","") if MEDIA_RE.fullmatch(str(s.get("photo",""))) else ""} for s in v[:24] if isinstance(s,dict)]
@@ -50,9 +50,10 @@ def sanitized(updates):
         if k=="social_duration":v=max(3,min(30,int(v)))
         if k=="role_index":v=max(0,min(11,int(v)))
         if k=="cover_mode" and v not in ("default","image"):raise ValueError("Portada inválida")
-        if k=="role" and v not in ("celebrante","diacono","lectores","monitores"):raise ValueError("Cargo inválido")
+        if k=="role" and v not in ("celebrante","diacono","salmista","lectores","monitores"):raise ValueError("Cargo inválido")
         if k=="announcements":v=[str(x)[:180] for x in v[:12]] if isinstance(v,list) else []
         if k in ("social_enabled","social_closing","social_during_mass","logo_persistent","visible","ticker_visible","slides_enabled"):v=bool(v)
+        if k=="salmo_respuesta":v=str(v).strip()[:220]
         if k=="parish_name":v=str(v).strip()[:100] or "Mi parroquia"
         out[k]=v
     return out
