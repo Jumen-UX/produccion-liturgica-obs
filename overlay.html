@@ -25,7 +25,7 @@ let card=el('slideCard');card.classList.toggle('hidden',idx<0);if(idx>=0){const 
 if(low){let labels={cintillo:'CELEBRACIÓN EUCARÍSTICA',lectura:'LITURGIA DE LA PALABRA',salmo:'SALMO RESPONSORIAL',evangelio:'SANTO EVANGELIO',homilia:'HOMILÍA',ofertorio:'PRESENTACIÓN DE LAS OFRENDAS',comunion:'SAGRADA COMUNIÓN',participante:'SERVIDORES DE LA CELEBRACIÓN'};el('eyebrow').textContent=labels[mode];
 if(mode==='participante'){
  const role=s.role||'celebrante';const names=s.participants||{};
- const label={celebrante:'CELEBRANTE',diacono:'DIÁCONO',lectores:'LECTOR',monitores:'MONITOR'};
+ const label={celebrante:'CELEBRANTE',diacono:'DIÁCONO',salmista:'SALMISTA',lectores:'LECTOR / PROCLAMADOR',monitores:'MONITOR'};
  const arr=Array.isArray(names[role])?names[role]:[names[role]||''];
  const index=Math.min(arr.length-1,Math.max(0,s.role_index||0));
  el('eyebrow').textContent=label[role]||'PARTICIPANTE';
@@ -34,7 +34,7 @@ if(mode==='participante'){
  el('lower').classList.toggle('hidden',!arr[index]);
 }else{
  el('maintext').textContent=s.title||'';
- el('subtext').textContent=s.reference||s.detail||'';
+ el('subtext').textContent=mode==='salmo' && s.salmo_respuesta ? ('Respuesta: '+s.salmo_respuesta) : (s.reference||s.detail||'');
 }}
 if(full){el('fullLabel').textContent=mode==='avisos'?'INFORMACIÓN PARROQUIAL':mode==='incidencia'?'AVISO DE TRANSMISIÓN':'GRACIAS POR ACOMPAÑARNOS';el('fullTitle').textContent=s.title||'';el('fullSub').textContent=s.subtitle||'';el('fullDetail').textContent=s.detail||''}
 const persistent=el('persistentLogo');const video=el('persistentLogoVideo');const img=el('persistentLogoImg');
