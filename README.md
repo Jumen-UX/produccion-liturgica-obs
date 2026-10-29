@@ -32,3 +32,6 @@ Los colores de las fiestas y solemnidades deben comprobarse según el calendario
 `launcher.py`: aplicación de escritorio; `servidor.py`: servicio local; `panel.html`: consola; `overlay.html`: salida OBS. `PLAN_V9.md`: mejoras previstas, no implementadas.
 
 **Estado:** paquete fuente preparado y verificado mediante pruebas locales básicas. El ejecutable de Windows debe compilarse y probarse en Windows.
+## Experiencia de uso
+
+La interfaz emplea **complejidad progresiva**: niveles Esencial, Personalizar y Avanzado sin perder los controles críticos de transmisión. Consulta [principios de UX](docs/UX_COMPLEJIDAD_PROGRESIVA.md) y [lista de validación](tests/VALIDACION_UX.md).
