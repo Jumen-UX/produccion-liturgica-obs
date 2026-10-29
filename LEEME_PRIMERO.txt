@@ -1,0 +1,12 @@
+PRODUCCION LITURGICA OBS
+======================
+Edicion generica: personaliza el nombre, logotipo, colores, redes y celebraciones de tu comunidad.
+
+Requisitos del modo fuente: Windows y Python 3.
+1. Extraer los archivos del proyecto a una carpeta local con permiso de escritura.
+2. Ejecutar INICIAR_SIN_EXE.bat para iniciar el panel.
+3. Configurar en OBS una fuente Navegador apuntando a http://127.0.0.1:8765/overlay.html en 1920x1080.
+4. Revisar la vista previa y publicar solo los contenidos aprobados.
+
+Para compilar el ejecutable, utilizar CREAR_EXE_WINDOWS.bat con conexión a internet.
+Nunca subir a GitHub configuraciones privadas, fotos personales ni secretos de la parroquia.
