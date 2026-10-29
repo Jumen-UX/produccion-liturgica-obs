@@ -1,0 +1,34 @@
+# Producción Litúrgica OBS
+
+Sistema local y configurable de gráficos para transmisiones de celebraciones litúrgicas mediante OBS Studio. **No está asociado a una parroquia específica.**
+
+## Funciones existentes
+
+- Identidad de parroquia o comunidad configurable (nombre, logo estático y logo animado).
+- Cuenta regresiva, portadas, avisos con fotografía opcional y redes sociales.
+- Colores y perfiles litúrgicos editables.
+- Identificación de celebrante, diácono, lectores y monitores.
+- Separación entre preparación y publicación en OBS.
+- Botones para limpiar/restaurar gráficos y cierre protegido.
+
+## Instalación en Windows
+
+1. Extraer todo el ZIP a una carpeta **con permiso de escritura** (por ejemplo Documentos\Produccion-Liturgica). No ejecutarlo desde dentro del ZIP ni desde Archivos de programa.
+2. Con Python 3 instalado, ejecutar `INICIAR_SIN_EXE.bat`; o construir el ejecutable usando `CREAR_EXE_WINDOWS.bat` desde Windows con Python 3.
+3. Configurar el nombre de la comunidad en **Identidad de la comunidad**, guardar y publicar.
+4. En OBS agregar una **Fuente de navegador** con `http://127.0.0.1:8765/overlay.html`, 1920 × 1080.
+5. El panel se abre en `http://127.0.0.1:8765/panel.html`.
+
+## Datos locales y privacidad
+
+Cada instalación funciona en su propia PC, ligada a `127.0.0.1`; no usa cuentas ni sincronización en la nube. Las preferencias quedan en `configuracion.json`, y las imágenes/videos cargados en la carpeta `media/`. **Estos archivos no deben subirse a GitHub.** Para copia de seguridad, guardar ambos por separado en un lugar privado. El software no se actualiza automáticamente.
+
+## Notas
+
+Los colores de las fiestas y solemnidades deben comprobarse según el calendario litúrgico correspondiente. El operador mantiene el control de cuándo aparecen los gráficos; la aplicación no automatiza la celebración. El servidor no debe exponerse a internet sin añadir autenticación y medidas de seguridad.
+
+## Desarrollo
+
+`launcher.py`: aplicación de escritorio; `servidor.py`: servicio local; `panel.html`: consola; `overlay.html`: salida OBS. `PLAN_V9.md`: mejoras previstas, no implementadas.
+
+**Estado:** paquete fuente preparado y verificado mediante pruebas locales básicas. El ejecutable de Windows debe compilarse y probarse en Windows.
