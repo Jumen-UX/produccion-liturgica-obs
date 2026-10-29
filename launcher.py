@@ -13,7 +13,7 @@ from http.server import ThreadingHTTPServer
 APP_DIR = Path(sys.executable).resolve().parent if getattr(sys, "frozen", False) else Path(__file__).resolve().parent
 RES_DIR = Path(getattr(sys, "_MEIPASS", APP_DIR))
 os.environ["LITURGIA_APP_DIR"] = str(APP_DIR)
-for filename in ("panel.html", "overlay.html"):
+for filename in ("panel.html", "overlay.html", "dock.html"):
     destination = APP_DIR / filename
     if not destination.exists() and (RES_DIR / filename).exists():
         destination.write_bytes((RES_DIR / filename).read_bytes())
