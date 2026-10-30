@@ -1,4 +1,5 @@
 configuracion.json
+conexion_obs.json
 *.local.json
 .env
 .env.*
