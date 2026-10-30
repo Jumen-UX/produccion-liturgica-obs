@@ -4,6 +4,7 @@ import copy
 import json
 import tempfile
 import threading
+import time
 import unittest
 from html.parser import HTMLParser
 from http.server import ThreadingHTTPServer
@@ -15,6 +16,7 @@ import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import servidor
+from obs_monitor import OBSMonitor
 
 
 class PageStructure(HTMLParser):
@@ -37,13 +39,14 @@ class PageStructure(HTMLParser):
 class LowerThirdIntegrationTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
-        self.original = (servidor.ROOT, servidor.DATA, servidor.draft, servidor.live, servidor.last_visible_state)
+        self.original = (servidor.ROOT, servidor.DATA, servidor.draft, servidor.live, servidor.last_visible_state, servidor.OBS_MONITOR)
         with servidor.LOCK:
             servidor.ROOT = Path(__file__).resolve().parents[1]
             servidor.DATA = Path(self.temp.name) / "configuracion.json"
             servidor.draft = copy.deepcopy(servidor.DEFAULT)
             servidor.live = copy.deepcopy(servidor.DEFAULT)
             servidor.last_visible_state = None
+            servidor.OBS_MONITOR = OBSMonitor(Path(self.temp.name) / "conexion_obs.json", start_worker=False)
         self.http = ThreadingHTTPServer(("127.0.0.1", 0), servidor.Handler)
         self.thread = threading.Thread(target=self.http.serve_forever, daemon=True)
         self.thread.start()
@@ -54,7 +57,7 @@ class LowerThirdIntegrationTests(unittest.TestCase):
         self.http.server_close()
         self.thread.join(timeout=2)
         with servidor.LOCK:
-            servidor.ROOT, servidor.DATA, servidor.draft, servidor.live, servidor.last_visible_state = self.original
+            servidor.ROOT, servidor.DATA, servidor.draft, servidor.live, servidor.last_visible_state, servidor.OBS_MONITOR = self.original
         self.temp.cleanup()
 
     def get(self, path):
@@ -143,6 +146,37 @@ class LowerThirdIntegrationTests(unittest.TestCase):
         self.post("publish", confirm_incidence=True)
         self.assertEqual(self.get("/api/state")["mode"], "incidencia")
 
+    def test_obs_program_confirmation_and_secret_protection(self):
+        unverified = self.get("/api/obs-status")
+        self.assertEqual(unverified["graphic_status"], "sin_verificar")
+        request = Request(
+            self.base + "/api/obs-config",
+            data=json.dumps({"port": 4455, "source_name": "Navegador 2", "password": "clave-solo-en-memoria"}).encode(),
+            headers={"Content-Type": "application/json"},
+        )
+        with urlopen(request, timeout=3) as response:
+            result = json.load(response)
+        self.assertTrue(result["config"]["has_password"])
+        self.assertNotIn("password", result["config"])
+        saved = (Path(self.temp.name) / "conexion_obs.json").read_text(encoding="utf-8")
+        self.assertNotIn("clave-solo-en-memoria", saved)
+        self.assertNotIn("password", saved)
+
+        with servidor.OBS_MONITOR.lock:
+            servidor.OBS_MONITOR.status = {"connected": True, "streaming": True,
+                                          "source_active": True, "error": "", "checked_at": time.time()}
+        self.assertEqual(self.get("/api/obs-status")["graphic_status"], "al_aire")
+        self.post("clean")
+        self.assertEqual(self.get("/api/obs-status")["graphic_status"], "imagen_limpia")
+        self.post("restore")
+        self.assertEqual(self.get("/api/obs-status")["graphic_status"], "al_aire")
+        with servidor.OBS_MONITOR.lock:
+            servidor.OBS_MONITOR.status["source_active"] = False
+        self.assertEqual(self.get("/api/obs-status")["graphic_status"], "fuera_de_programa")
+        with servidor.OBS_MONITOR.lock:
+            servidor.OBS_MONITOR.status["connected"] = False
+        self.assertEqual(self.get("/api/obs-status")["graphic_status"], "sin_verificar")
+
     def test_invalid_style_is_rejected_without_changing_draft(self):
         original = self.get("/api/draft")["lower_third"]
         for bad in (
@@ -215,6 +249,10 @@ class LowerThirdIntegrationTests(unittest.TestCase):
             self.assertIn(control, pages["panel.html"].ids)
         for control in ("mobileClean", "mobileRestore", "mobileLiveState"):
             self.assertIn(control, pages["panel.html"].ids)
+        for control in ("obsSettings", "obsConnect", "obs_source_name", "liveState", "onAirGraphic"):
+            self.assertIn(control, pages["panel.html"].ids)
+        for control in ("airBadge", "airGraphic", "statePrepared", "stateLower", "statePerson", "stateWait"):
+            self.assertIn(control, pages["dock.html"].ids)
         self.assertNotIn("template", pages["panel.html"].ids)
 
 

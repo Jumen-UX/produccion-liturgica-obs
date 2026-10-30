@@ -12,6 +12,7 @@ Sistema local y configurable de gráficos para transmisiones de celebraciones li
 - Dock local para controlar la emisión y publicar identificaciones y Lower Thirds sin abandonar OBS.
 - Separación entre preparación y publicación en OBS.
 - Botones para limpiar/restaurar gráficos y cierre protegido.
+- Indicador de gráfico **AL AIRE**, **EN PROGRAMA**, **FUERA DE PROGRAMA** o **SIN VERIFICAR**, consultando OBS WebSocket en el equipo local.
 
 ## Descargas de Windows (al publicar una versión)
 
@@ -42,11 +43,22 @@ El flujo `.github/workflows/windows-release.yml` compila y prueba el ejecutable,
 - **Volver al panel:** el Estudio incluye el acceso «Volver al panel principal».
 - Los niveles **Esencial, Personalizar y Avanzado** controlan qué ajustes se ven, sin publicar ni borrar cambios.
 
+### Comprobación del gráfico en programa de OBS
+
+1. Dentro de OBS, habilitar **Herramientas → Ajustes del servidor WebSocket**. El puerto usual es `4455`; utilizar autenticación cuando esté disponible.
+2. En el panel web, abrir **Avanzado → Conexión y verificación de OBS**. Escribir el nombre **exacto** de la Fuente de navegador usada para `overlay.html` (por ejemplo, «Navegador 2»), el puerto y la contraseña WebSocket, si OBS la exige. Pulsar «Guardar y verificar OBS».
+3. El Dock y el panel mostrarán **AL AIRE** solamente si el gráfico está publicado, la fuente aparece activa en la salida de programa y OBS confirma una transmisión activa. **EN PROGRAMA** indica que la fuente está en programa sin transmisión activa. **FUERA DE PROGRAMA** significa que la fuente no está activa en programa. **SIN VERIFICAR** indica que falta configuración, conexión o confirmación de OBS.
+4. «Imagen limpia» y «Restaurar» siguen disponibles aunque OBS WebSocket no esté conectado; no se bloquea la operación de los gráficos.
+
+La conexión consulta solamente `GetStreamStatus` y `GetSourceActive`; no inicia ni detiene transmisiones y nunca modifica escenas. El nombre y puerto se conservan en `conexion_obs.json`; **la contraseña solo permanece en memoria durante la ejecución**, no se guarda en archivos ni se envía de vuelta a los navegadores. Por seguridad, la conexión se limita a `127.0.0.1`.
+
+La comprobación de actividad de una fuente no puede detectar si otra capa opaca la tapa visualmente; verifica su participación en el programa de OBS, no analiza píxeles de la transmisión final. La prueba real en Windows/OBS sigue pendiente.
+
 Para verificar la integración en una PC de pruebas: abrir el editor, guardar un nombre y confirmar que no cambia OBS; publicar, comprobar animación; limpiar, restaurar, y repetir desde el Dock. No utilizar una transmisión real para la primera validación.
 
 ## Datos locales y privacidad
 
-Cada instalación funciona en su propia PC, ligada a `127.0.0.1`; no usa cuentas ni sincronización en la nube. Las preferencias quedan en `configuracion.json`, y las imágenes/videos cargados en la carpeta `media/`. **Estos archivos no deben subirse a GitHub.** Para copia de seguridad, guardar ambos por separado en un lugar privado. El software no se actualiza automáticamente.
+Cada instalación funciona en su propia PC, ligada a `127.0.0.1`; no usa cuentas ni sincronización en la nube. Las preferencias quedan en `configuracion.json`, la configuración no secreta de OBS en `conexion_obs.json` y las imágenes/videos cargados en la carpeta `media/`. **Estos archivos no deben subirse a GitHub.** Para copia de seguridad, guardar esos datos por separado en un lugar privado. El software no se actualiza automáticamente.
 
 ## Notas
 
@@ -54,7 +66,7 @@ Los colores de las fiestas y solemnidades deben comprobarse según el calendario
 
 ## Desarrollo
 
-`launcher.py`: aplicación de escritorio; `servidor.py`: servicio local; `panel.html`: consola; `studio.html`: editor de Lower Thirds; `dock.html`: Dock de control; `overlay.html`: salida OBS. `PLAN_V9.md`: otras mejoras previstas, no implementadas.
+`launcher.py`: aplicación de escritorio; `servidor.py`: servicio local; `obs_monitor.py`: consulta WebSocket local de OBS; `panel.html`: consola; `studio.html`: editor de Lower Thirds; `dock.html`: Dock de control; `overlay.html`: salida OBS. `PLAN_V9.md`: otras mejoras previstas, no implementadas.
 
 **Estado de esta rama de integración:** pruebas locales de contrato HTTP realizadas; validación visual y funcional en Windows/OBS y compilación de sus nuevos artefactos pendientes antes de integrar o publicar.
 

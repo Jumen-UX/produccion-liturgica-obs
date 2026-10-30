@@ -2,9 +2,11 @@ from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
 from urllib.parse import urlparse
 from pathlib import Path
 import json, copy, time, uuid, re, threading, os
+from obs_monitor import OBSMonitor, graphic_state
 
 ROOT=Path(os.environ.get("LITURGIA_APP_DIR",Path(__file__).resolve().parent)).resolve()
 DATA=ROOT/"configuracion.json"
+OBS_MONITOR=OBSMonitor(ROOT/"conexion_obs.json")
 LOCK=threading.RLock()
 LOWER_DEFAULT={"template":"classic","enter":"fade","exit":"fade","duration":650,"opacity":94,"background":"#152941","accent":"#D6B678","name":"Nombre del participante","role":"Participante","subtitle":""}
 LOWER_TEMPLATES={"classic","minimal","liturgical","modern"}
@@ -91,15 +93,28 @@ class Handler(SimpleHTTPRequestHandler):
         path=urlparse(self.path).path
         if path in ("/api/state","/api/draft"):
             with LOCK:self.respond(snapshot() if path=="/api/state" else copy.deepcopy(draft))
+        elif path=="/api/obs-config":
+            self.respond(OBS_MONITOR.configuration())
+        elif path=="/api/obs-status":
+            with LOCK:current=snapshot()
+            status=OBS_MONITOR.get_status()
+            status.update(graphic_status=graphic_state(current,status),graphic_mode=current.get("mode"),
+                          graphic_title=current.get("lower_third",{}).get("name") if current.get("mode")=="lower_third" else current.get("title"))
+            self.respond(status)
         else:super().do_GET()
     def do_POST(self):
         global last_visible_state
         path=urlparse(self.path).path
-        if path not in ("/api/update","/api/logo","/api/image","/api/logo-video"):return self.respond({"error":"Ruta inválida"},404)
+        if path not in ("/api/update","/api/logo","/api/image","/api/logo-video","/api/obs-config"):return self.respond({"error":"Ruta inválida"},404)
         try:
             size=int(self.headers.get("Content-Length","0"))
             if size<1 or size>35*1024*1024:raise ValueError("Tamaño inválido")
+            if path=="/api/obs-config" and size>4096:raise ValueError("Configuración OBS demasiado grande")
             body=self.rfile.read(size)
+            if path=="/api/obs-config":
+                if self.headers.get("Content-Type","").split(";")[0]!="application/json":
+                    raise ValueError("Solo se acepta JSON para conectar OBS")
+                return self.respond({"ok":True,"config":OBS_MONITOR.configure(json.loads(body))})
             if path!="/api/update":
                 kind=self.headers.get("Content-Type","").split(";")[0]
                 image_types={"image/png":(b"\x89PNG\r\n\x1a\n","png"),"image/jpeg":(b"\xff\xd8\xff","jpg"),"image/webp":(b"RIFF","webp")}

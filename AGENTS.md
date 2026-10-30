@@ -109,6 +109,7 @@ No modificar ni redibujar logos o fotografías aportados por el usuario sin auto
 - **Imagen limpia** debe actuar inmediatamente y sin confirmaciones bloqueantes; **Restaurar** debe recuperar el estado previsto. Mantener sus controles localizables.
 - No avanzar automáticamente por momentos de una celebración litúrgica. Los avisos y transiciones de escena deben quedar bajo control del operador, salvo automatización específica aprobada.
 - Mostrar con claridad conexión, estado actual, error y último resultado confirmado. No anunciar «Publicado» cuando solo se ha guardado localmente.
+- No anunciar «AL AIRE» por el solo hecho de publicar en el servidor HTTP local: exigir confirmación de fuente activa en Programa y transmisión activa en OBS. Ante falta de verificación, indicar «SIN VERIFICAR».
 - Diseñar una recuperación segura ante pérdida de conexión del Dock, recarga del navegador, archivo de medios ausente o fallo de animación.
 - No impedir la transmisión principal si el programa auxiliar falla. Documentar el comportamiento de los gráficos ante reinicios.
 

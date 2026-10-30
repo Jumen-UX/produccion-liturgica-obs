@@ -22,6 +22,7 @@ Los niveles **no son permisos ni roles de seguridad**. Son preferencias reversib
 9. **Respeto litúrgico:** durante la plegaria eucarística se recomienda imagen limpia; no activar anuncios automáticos en esos momentos.
 10. **Avisos técnicos:** su publicación exige confirmación explícita del operador y validación del servidor, incluso desde el Dock.
 11. **Estados inequívocos:** «Gráfico visible» solo indica la salida servida al navegador OBS; no significa que OBS esté transmitiendo o grabando.
+12. **Verificación en OBS:** «AL AIRE» requiere gráfico publicado, fuente activa en Programa y transmisión activa confirmada por OBS WebSocket. Si no se puede comprobar, mostrar «SIN VERIFICAR», nunca una confirmación presunta.
 
 ## Aplicación por módulo
 | Módulo | Esencial | Personalizar | Avanzado |
@@ -40,6 +41,8 @@ Los niveles **no son permisos ni roles de seguridad**. Son preferencias reversib
 - Se puede regresar a Esencial sin perder el formulario ya preparado.
 - Imagen limpia y Restaurar permanecen visibles en los tres niveles.
 - Estado de conexión y de salida gráfica permanecen accesibles, sin confundirlos con la transmisión de OBS.
+- El Dock y el panel identifican el gráfico vigente y distinguen AL AIRE, EN PROGRAMA, FUERA DE PROGRAMA, IMAGEN LIMPIA y SIN VERIFICAR.
+- La configuración de fuente/puerto/contraseña WebSocket está solo en Avanzado del panel; el Dock no añade formularios. La contraseña no se persiste.
 - En Personalizar se accede al logo, portadas, avisos y redes.
 - El logo persistente se muestra en Avanzado.
 - La preferencia se conserva al recargar (si localStorage está habilitado).
