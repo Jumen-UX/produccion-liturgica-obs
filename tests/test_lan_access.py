@@ -173,11 +173,13 @@ class LANAccessTests(unittest.TestCase):
     def test_runtime_start_stop_and_port_collision(self):
         access = LANAccess(Path(self.temp.name) / "runtime.json")
         runtime = LANRuntime(access, servidor.Handler)
-        collision = self.lan.server_port
-        access.configure({"enabled": True, "port": collision,
+        access.configure({"enabled": True, "port": 8767,
                           "operator_password": "clave-segura-1234"})
-        with self.assertRaises(OSError):
-            runtime.apply()
+        # Windows puede permitir bindings solapados entre 127.0.0.1 y 0.0.0.0.
+        # Simular el fallo del SO evita una suposición distinta por plataforma.
+        with patch("lan_access.LANServer", side_effect=OSError("Puerto ocupado")):
+            with self.assertRaises(OSError):
+                runtime.apply()
         self.assertIsNone(runtime.server)
         access.configure({"enabled": False})
         runtime.apply()

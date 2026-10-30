@@ -161,6 +161,7 @@ class Handler(SimpleHTTPRequestHandler):
                 self.wfile.write(f"data: {previous}\n\n".encode("ascii"))
                 self.wfile.flush()
         except (BrokenPipeError,ConnectionResetError,OSError):pass
+        finally:self.close_connection=True
     def do_GET(self):
         if not self.trusted_host():return self.respond({"error":"Host no autorizado"},421)
         parsed=urlparse(self.path);path=parsed.path
