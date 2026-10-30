@@ -2,7 +2,7 @@ name: Windows · compilar y distribuir
 
 on:
   pull_request:
-    branches: [main]
+    branches: [main, feature/graphics-live-integration]
   push:
     tags:
       - 'v*'
@@ -27,14 +27,14 @@ jobs:
       - name: Probar el código Python
         shell: pwsh
         run: |
-          python -m compileall -q launcher.py servidor.py
+          python -m pip install --disable-pip-version-check pyinstaller pystray pillow qrcode
+          python -m compileall -q launcher.py servidor.py lan_access.py obs_monitor.py
           python -m unittest discover -s tests -p 'test_*.py' -v
-          python -m pip install --disable-pip-version-check pyinstaller pystray pillow
 
       - name: Compilar ejecutable portátil
         shell: pwsh
         run: |
-          pyinstaller --noconfirm --clean --onefile --windowed --name ProduccionLiturgicaOBS --add-data "panel.html;." --add-data "overlay.html;." --add-data "dock.html;." --add-data "studio.html;." --hidden-import pystray._win32 launcher.py
+          pyinstaller --noconfirm --clean --onefile --windowed --name ProduccionLiturgicaOBS --add-data "panel.html;." --add-data "overlay.html;." --add-data "dock.html;." --add-data "studio.html;." --add-data "login.html;." --add-data "remote.html;." --hidden-import pystray._win32 launcher.py
           if (!(Test-Path "dist/ProduccionLiturgicaOBS.exe")) { throw "No se generó el ejecutable" }
 
       - name: Probar inicio y servidor HTTP

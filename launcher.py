@@ -14,7 +14,7 @@ APP_DIR = (Path(os.environ.get("LOCALAPPDATA") or Path.home()) / "ProduccionLitu
 APP_DIR.mkdir(parents=True, exist_ok=True)
 RES_DIR = Path(getattr(sys, "_MEIPASS", APP_DIR))
 os.environ["LITURGIA_APP_DIR"] = str(APP_DIR)
-for filename in ("panel.html", "overlay.html", "dock.html", "studio.html"):
+for filename in ("panel.html", "overlay.html", "dock.html", "studio.html", "login.html", "remote.html"):
     destination = APP_DIR / filename
     source = RES_DIR / filename
     if source.exists() and source.resolve() != destination.resolve():
@@ -51,6 +51,12 @@ class Launcher:
             self.worker=threading.Thread(target=self.server.serve_forever,daemon=True)
             self.worker.start()
             self.status.set("Servidor activo · 127.0.0.1:8765")
+            servidor.LAN_RUNTIME=servidor.LANRuntime(servidor.LAN_ACCESS,servidor.Handler)
+            try:
+                servidor.LAN_RUNTIME.apply()
+            except OSError as exc:
+                servidor.LAN_RUNTIME.error=str(exc)
+                self.status.set("Panel local activo · acceso LAN no disponible")
         except OSError:
             # Nunca se detiene un proceso externo: puede pertenecer a otra instancia.
             self.status.set("Puerto 8765 ocupado; revisa si el sistema ya está abierto.")
@@ -82,6 +88,7 @@ class Launcher:
         if not messagebox.askyesno("Cerrar el sistema","¿Ha finalizado la transmisión? Al cerrar, OBS dejará de recibir los gráficos locales."):
             return
         if self.server:self.server.shutdown();self.server.server_close()
+        if servidor.LAN_RUNTIME:servidor.LAN_RUNTIME.stop()
         if self.tray:self.tray.stop()
         self.root.destroy()
     def run(self):
