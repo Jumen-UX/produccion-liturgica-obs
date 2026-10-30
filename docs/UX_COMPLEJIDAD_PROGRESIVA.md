@@ -11,15 +11,17 @@ Una sola aplicación, utilizable por un voluntario nuevo y por un productor expe
 Los niveles **no son permisos ni roles de seguridad**. Son preferencias reversibles de visualización, guardadas en el navegador local. Cambiar de nivel no modifica ni publica datos.
 
 ## Reglas obligatorias
-1. **Siempre visible:** estado del servidor, estado de emisión, botón Imagen limpia, botón Restaurar y vista de programa.
+1. **Siempre accesible:** estado del servidor, estado de la salida gráfica y botones Imagen limpia y Restaurar. En móviles, los controles críticos permanecen fijos en la parte inferior. La vista gráfica se puede consultar desplazándose por el panel.
 2. **Preparar ≠ Emitir:** los cambios de datos o diseño no aparecen al aire hasta pulsar Publicar en OBS.
 3. **No usar temporización para avanzar automáticamente en la liturgia:** el operador decide cuándo cambiar.
 4. **Una tarea sencilla no exige abrir ajustes avanzados**; desde la vista esencial se ofrecen accesos contextuales a Personalizar.
-5. **Reversibilidad:** controles de restauración, guardado de configuración local y valores predeterminados.
+5. **Reversibilidad:** Restaurar recupera el último gráfico visible, incluso si cambió el borrador; el guardado local y los valores predeterminados siguen disponibles.
 6. **Accesibilidad:** etiquetas, tabulación, foco visible, contraste, indicación textual de los estados y animaciones reducidas si el sistema lo solicita.
 7. **Estabilidad:** agregar capas visuales sin cambiar las API ni perder configuraciones anteriores.
 8. **Seguridad en directo:** no tapar el control de imagen limpia; no poner confirmación bloqueante al limpiar la emisión.
 9. **Respeto litúrgico:** durante la plegaria eucarística se recomienda imagen limpia; no activar anuncios automáticos en esos momentos.
+10. **Avisos técnicos:** su publicación exige confirmación explícita del operador y validación del servidor, incluso desde el Dock.
+11. **Estados inequívocos:** «Gráfico visible» solo indica la salida servida al navegador OBS; no significa que OBS esté transmitiendo o grabando.
 
 ## Aplicación por módulo
 | Módulo | Esencial | Personalizar | Avanzado |
@@ -37,12 +39,13 @@ Los niveles **no son permisos ni roles de seguridad**. Son preferencias reversib
 - Cambiar de nivel no llama a /api/update ni publica nada.
 - Se puede regresar a Esencial sin perder el formulario ya preparado.
 - Imagen limpia y Restaurar permanecen visibles en los tres niveles.
-- Estado de conexión y estado de emisión permanecen visibles.
+- Estado de conexión y de salida gráfica permanecen accesibles, sin confundirlos con la transmisión de OBS.
 - En Personalizar se accede al logo, portadas, avisos y redes.
 - El logo persistente se muestra en Avanzado.
 - La preferencia se conserva al recargar (si localStorage está habilitado).
 - Navegación por teclado y pantallas estrechas mantienen los controles críticos accesibles.
-- Se realizan pruebas de regresión de guardar borrador / publicar / limpiar / restaurar.
+- Se realizan pruebas de regresión de guardar borrador / publicar / limpiar / restaurar, incluida edición de un borrador diferente entre limpiar y restaurar.
+- El aviso de dificultades técnicas requiere confirmación en interfaz y servidor.
 - El Dock no tiene campos de configuración: sus botones de lanzamiento usan los valores preparados por el panel y el Estudio.
 - El formulario principal presenta únicamente los datos relevantes al gráfico seleccionado, con ayuda contextual.
 

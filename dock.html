@@ -18,7 +18,7 @@ button:disabled{opacity:.45;cursor:not-allowed}button.secondary{background:#3547
 .links{display:flex;gap:8px;flex-wrap:wrap}.links a{background:#35475c;color:white;text-decoration:none;border-radius:7px;padding:10px 11px;font-weight:600;flex:1;text-align:center;white-space:nowrap}
 #feedback{min-height:17px;color:#dfc38d;font-size:11px;margin:8px 2px}
 </style></head><body>
-<header><h1>Producción Litúrgica · Emisión</h1><span class="status" id="status">Conectando…</span></header>
+<header><h1>Producción Litúrgica · Control gráfico</h1><span class="status" id="status">Conectando…</span></header>
 <section><h2>Estado de la salida gráfica</h2><div class="live" id="liveSummary">Consultando…</div>
 <div class="buttons"><button id="clean" class="danger">Imagen limpia</button><button id="restore" class="secondary">Restaurar gráfico</button></div></section>
 <section><h2>Lanzar gráficos preparados</h2>
@@ -26,7 +26,7 @@ button:disabled{opacity:.45;cursor:not-allowed}button.secondary{background:#3547
 <div class="graphic"><div><strong>Lower Third</strong><small id="lowerSummary">Cargando estilo…</small></div><button id="launchLower" class="secondary">Lanzar</button></div>
 <div class="graphic"><div><strong>Identificación de participante</strong><small id="personSummary">Cargando participantes…</small></div><button id="launchPerson" class="secondary">Lanzar</button></div>
 <div class="graphic"><div><strong>Pantalla de espera</strong><small id="waitSummary">Cuenta regresiva y avisos preparados en el panel</small></div><button id="launchWait" class="secondary">Lanzar</button></div>
-<p class="hint">El Dock solo controla la emisión. Los nombres, diseños y textos se modifican en el panel web o en el Estudio.</p></section>
+<p class="hint">El Dock solo lanza y retira gráficos; no indica si OBS está transmitiendo. Los nombres, diseños y textos se modifican en el panel web o en el Estudio.</p></section>
 <section><h2>Cuenta regresiva</h2><div class="timer" id="timer">15:00</div>
 <div class="buttons"><button id="timerStart">Iniciar</button><button id="timerPause" class="secondary">Pausar</button><button id="timerReset" class="secondary">Reiniciar</button></div></section>
 <section><h2>Elementos auxiliares</h2>
@@ -44,7 +44,7 @@ function tell(message,error=false){$('feedback').textContent=message;$('feedback
 function preparedTitle(s){if(!s)return '';return s.mode==='lower_third'?(s.lower_third?.name||'Sin nombre'):s.mode==='participante'?(participantName(s)||'Sin participante'):s.title||'Sin título'}
 function participantName(s){const role=s?.role||'celebrante',entry=s?.participants?.[role],people=Array.isArray(entry)?entry:[entry||''];return people[Math.min(Math.max(Number(s.role_index)||0,0),people.length-1)]||''}
 function render(){
- $('status').textContent=connected?'Servidor conectado':'Sin conexión';$('status').classList.toggle('ok',connected);
+ $('status').textContent=connected?'Servidor local conectado':'Sin conexión';$('status').classList.toggle('ok',connected);
  const controls=document.querySelectorAll('button');controls.forEach(button=>button.disabled=!connected);
  if(!connected){$('liveSummary').textContent='Sin conexión con el servidor local.';return}
  const mode=live?.visible===false?'limpio':live?.mode||'limpio';
@@ -59,7 +59,7 @@ function render(){
 }
 async function refresh(){try{[live,draft]=await Promise.all([fetchJSON('/api/state'),fetchJSON('/api/draft')]);connected=true;render()}catch(error){connected=false;render();tell('No se pudo consultar el servidor local.',true)}}
 async function perform(action,description){try{await action();tell(description);await refresh()}catch(error){tell(error.message,true)}}
-$('launchPrepared').onclick=()=>perform(()=>command('publish'),'Gráfico preparado enviado a la salida.');
+$('launchPrepared').onclick=()=>{const incident=draft?.mode==='incidencia';if(incident&&!confirm('¿Mostrar el aviso de dificultades técnicas en la salida gráfica?'))return;perform(()=>command('publish',{confirm_incidence:incident}),'Gráfico preparado enviado a la salida.');};
 $('launchLower').onclick=()=>perform(()=>command('launch',{mode:'lower_third'}),'Lower Third enviado a la salida.');
 $('launchPerson').onclick=()=>perform(()=>command('launch',{mode:'participante'}),'Identificación enviada a la salida.');
 $('launchWait').onclick=()=>perform(()=>command('launch',{mode:'espera'}),'Pantalla de espera enviada a la salida.');

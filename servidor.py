@@ -35,6 +35,9 @@ except (ValueError,TypeError):draft["lower_third"]=copy.deepcopy(LOWER_DEFAULT)
 live=copy.deepcopy(draft)
 live.update(running=False,end_at=None,remaining=int(live["timer_minutes"])*60)
 EDIT=set(DEFAULT)-{"running","end_at","remaining","logo","timer_minutes"}
+# La restauración recupera la última salida visible, no el borrador en edición.
+SCREEN_STATE_FIELDS=set(DEFAULT)-{"running","end_at","remaining","timer_minutes"}
+last_visible_state=None
 MODES={"espera","cintillo","lectura","salmo","evangelio","homilia","ofertorio","comunion","avisos","cierre","limpio","incidencia","participante","lower_third"}
 THEMES={"ordinario","adviento","navidad","cuaresma","pascua","pentecostes","martires","blanco","rojo","verde","morado","rosa","negro","personalizado"}
 MEDIA_RE=re.compile(r"^/media/[a-f0-9]{32}\.(?:png|jpg|webp|mp4|webm)$")
@@ -90,6 +93,7 @@ class Handler(SimpleHTTPRequestHandler):
             with LOCK:self.respond(snapshot() if path=="/api/state" else copy.deepcopy(draft))
         else:super().do_GET()
     def do_POST(self):
+        global last_visible_state
         path=urlparse(self.path).path
         if path not in ("/api/update","/api/logo","/api/image","/api/logo-video"):return self.respond({"error":"Ruta inválida"},404)
         try:
@@ -121,6 +125,8 @@ class Handler(SimpleHTTPRequestHandler):
                 cmd=data.get("command")
                 if cmd=="draft":draft.update(sanitized(data.get("updates",{})));persist()
                 elif cmd=="publish":
+                    if draft["mode"]=="incidencia" and data.get("confirm_incidence") is not True:
+                        raise ValueError("Confirma expresamente el aviso de dificultades técnicas antes de mostrarlo")
                     for k in EDIT:live[k]=copy.deepcopy(draft[k])
                 elif cmd=="launch":
                     mode=data.get("mode")
@@ -131,8 +137,15 @@ class Handler(SimpleHTTPRequestHandler):
                 elif cmd=="social_show":live["social_now"]=True
                 elif cmd=="social_hide":live["social_now"]=False
                 elif cmd=="logo_toggle":live["logo_persistent"]=not live.get("logo_persistent",True)
-                elif cmd=="clean":live.update(visible=False,mode="limpio")
-                elif cmd=="restore":live.update(visible=True,mode=draft["mode"] if draft["mode"]!="limpio" else "cintillo")
+                elif cmd=="clean":
+                    if live.get("visible") and live.get("mode")!="limpio":
+                        last_visible_state={k:copy.deepcopy(live[k]) for k in SCREEN_STATE_FIELDS}
+                    live.update(visible=False,mode="limpio")
+                elif cmd=="restore":
+                    if not live.get("visible") or live.get("mode")=="limpio":
+                        if last_visible_state:
+                            for k in SCREEN_STATE_FIELDS:live[k]=copy.deepcopy(last_visible_state[k])
+                        live["visible"]=True
                 elif cmd=="timer_set":
                     n=max(1,min(999,int(data.get("minutes",15))))
                     for obj in (draft,live):obj.update(timer_minutes=n,remaining=n*60,running=False,end_at=None)

@@ -37,12 +37,13 @@ class PageStructure(HTMLParser):
 class LowerThirdIntegrationTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
-        self.original = (servidor.ROOT, servidor.DATA, servidor.draft, servidor.live)
+        self.original = (servidor.ROOT, servidor.DATA, servidor.draft, servidor.live, servidor.last_visible_state)
         with servidor.LOCK:
             servidor.ROOT = Path(__file__).resolve().parents[1]
             servidor.DATA = Path(self.temp.name) / "configuracion.json"
             servidor.draft = copy.deepcopy(servidor.DEFAULT)
             servidor.live = copy.deepcopy(servidor.DEFAULT)
+            servidor.last_visible_state = None
         self.http = ThreadingHTTPServer(("127.0.0.1", 0), servidor.Handler)
         self.thread = threading.Thread(target=self.http.serve_forever, daemon=True)
         self.thread.start()
@@ -53,7 +54,7 @@ class LowerThirdIntegrationTests(unittest.TestCase):
         self.http.server_close()
         self.thread.join(timeout=2)
         with servidor.LOCK:
-            servidor.ROOT, servidor.DATA, servidor.draft, servidor.live = self.original
+            servidor.ROOT, servidor.DATA, servidor.draft, servidor.live, servidor.last_visible_state = self.original
         self.temp.cleanup()
 
     def get(self, path):
@@ -93,6 +94,54 @@ class LowerThirdIntegrationTests(unittest.TestCase):
         live = self.get("/api/state")
         self.assertTrue(live["visible"])
         self.assertEqual(live["mode"], "lower_third")
+
+    def test_restore_recovers_last_visible_graphic_not_a_new_draft(self):
+        original_colors = {**servidor.DEFAULT["colors"], "accent": "#c38044"}
+        self.post("draft", updates={
+            "mode": "lectura", "title": "Primera lectura", "reference": "Is 35, 1-6",
+            "colors": original_colors, "lower_third": {"name": "Lector anterior"},
+        })
+        self.post("publish")
+        previous = self.get("/api/state")
+
+        self.post("clean")
+        self.post("clean")  # No reemplazar el historial por una pantalla vacía.
+        self.post("draft", updates={
+            "mode": "cierre", "title": "Gracias por acompañarnos",
+            "colors": {**original_colors, "accent": "#123456"},
+            "lower_third": {"name": "Nuevo lector"},
+        })
+        self.post("restore")
+        restored = self.get("/api/state")
+        for key in servidor.SCREEN_STATE_FIELDS:
+            with self.subTest(field=key):
+                self.assertEqual(restored[key], previous[key])
+        self.assertEqual(self.get("/api/draft")["title"], "Gracias por acompañarnos")
+
+        self.post("restore")  # Restaurar no altera un gráfico que ya esté visible.
+        self.assertEqual(self.get("/api/state")["title"], "Primera lectura")
+
+    def test_clean_restore_preserves_timer_runtime(self):
+        self.post("timer_set", minutes=7)
+        self.post("timer_start")
+        self.post("clean")
+        self.post("restore")
+        restored = self.get("/api/state")
+        self.assertEqual(restored["mode"], "espera")
+        self.assertTrue(restored["running"])
+        self.assertGreater(restored["remaining"], 0)
+        self.assertLessEqual(restored["remaining"], 420)
+
+    def test_technical_incident_requires_explicit_confirmation(self):
+        self.post("draft", updates={"mode": "incidencia", "title": "Dificultades técnicas"})
+        before = self.get("/api/state")
+        for options in ({}, {"confirm_incidence": False}, {"confirm_incidence": "true"}):
+            with self.subTest(options=options), self.assertRaises(HTTPError) as error:
+                self.post("publish", **options)
+            self.assertEqual(error.exception.code, 400)
+            self.assertEqual(self.get("/api/state"), before)
+        self.post("publish", confirm_incidence=True)
+        self.assertEqual(self.get("/api/state")["mode"], "incidencia")
 
     def test_invalid_style_is_rejected_without_changing_draft(self):
         original = self.get("/api/draft")["lower_third"]
@@ -163,6 +212,8 @@ class LowerThirdIntegrationTests(unittest.TestCase):
         self.assertIn("/studio.html", pages["dock.html"].links)
         self.assertIn("/panel.html", pages["studio.html"].links)
         for control in ("mode", "modeHelp", "contentFields", "applySuggestion", "logoSettings", "colorSettings", "coverSettings"):
+            self.assertIn(control, pages["panel.html"].ids)
+        for control in ("mobileClean", "mobileRestore", "mobileLiveState"):
             self.assertIn(control, pages["panel.html"].ids)
         self.assertNotIn("template", pages["panel.html"].ids)
 
