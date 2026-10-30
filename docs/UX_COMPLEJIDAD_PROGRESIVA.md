@@ -30,7 +30,7 @@ Los niveles **no son permisos ni roles de seguridad**. Son preferencias reversib
 | Avisos | Mensaje breve | Imágenes y orden | Programación contextual |
 | OBS | Mostrar, limpiar, restaurar | Logo y redes | Escenas y controles avanzados |
 
-**Estado:** el panel general aplica los niveles progresivos; la biblioteca de lower thirds y el dock integrado todavía tienen integraciones propias pendientes. No atribuirles funcionalidades que aún no existen.
+**Aplicación actual:** el panel web centraliza la configuración. El formulario de gráficos revela campos según el tipo seleccionado y tiene accesos directos a logo, color y portada. El Estudio de Lower Thirds incorpora sus niveles progresivos y un regreso al panel. El Dock integrado es un lanzador de gráficos ya configurados y mantiene visibles controles críticos (Imagen limpia y Restaurar), sin editores ni formularios.
 
 ## Criterios de aceptación
 - Al abrir una instalación nueva aparece Esencial.
@@ -43,6 +43,8 @@ Los niveles **no son permisos ni roles de seguridad**. Son preferencias reversib
 - La preferencia se conserva al recargar (si localStorage está habilitado).
 - Navegación por teclado y pantallas estrechas mantienen los controles críticos accesibles.
 - Se realizan pruebas de regresión de guardar borrador / publicar / limpiar / restaurar.
+- El Dock no tiene campos de configuración: sus botones de lanzamiento usan los valores preparados por el panel y el Estudio.
+- El formulario principal presenta únicamente los datos relevantes al gráfico seleccionado, con ayuda contextual.
 
 ## Futuras decisiones
 - Diferenciar preferencia de interfaz de permisos de operador, si se incorporan perfiles.

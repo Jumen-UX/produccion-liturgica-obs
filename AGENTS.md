@@ -114,7 +114,9 @@ No modificar ni redibujar logos o fotografías aportados por el usuario sin auto
 
 ## 9. Dock y comunicación con OBS
 
-- El Dock debe ser otra superficie de control del mismo estado y las mismas operaciones, no una aplicación con configuración independiente.
+- El **panel web es el único lugar para configurar** gráficos generales, identidad, participantes y portadas. El Estudio configura las plantillas de Lower Thirds usando el mismo estado local.
+- El Dock debe actuar exclusivamente como **lanzador y superficie operativa durante la transmisión**: mostrar gráficos preparados, cuenta regresiva, imagen limpia/restauración y elementos auxiliares. No duplicar formularios de edición ni crear configuración independiente.
+- El formulario del panel debe mostrar campos apropiados para cada tipo de gráfico, con ayuda contextual y una distinción clara entre guardar preparación y mostrar en OBS.
 - Comprobar el funcionamiento real del Dock en OBS antes de declarar la integración terminada. Una maqueta HTML o una URL que abre en navegador no prueban por sí solas el comportamiento en OBS.
 - Mantener compatibilidad con la Fuente de navegador y el servicio local ya documentados; modificar contratos de API con pruebas de regresión y justificación.
 - La configuración actual usa `127.0.0.1:8765`. No exponer el servidor a la red pública ni eliminar ese límite sin diseño de autenticación y autorización aprobado.

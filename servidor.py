@@ -122,6 +122,12 @@ class Handler(SimpleHTTPRequestHandler):
                 if cmd=="draft":draft.update(sanitized(data.get("updates",{})));persist()
                 elif cmd=="publish":
                     for k in EDIT:live[k]=copy.deepcopy(draft[k])
+                elif cmd=="launch":
+                    mode=data.get("mode")
+                    if mode not in ("espera","participante","lower_third"):raise ValueError("Gráfico no disponible para lanzamiento directo")
+                    if mode=="espera" and draft["mode"]!="espera":raise ValueError("Prepara primero la pantalla de espera en el panel")
+                    for k in EDIT:live[k]=copy.deepcopy(draft[k])
+                    live.update(mode=mode,visible=True)
                 elif cmd=="social_show":live["social_now"]=True
                 elif cmd=="social_hide":live["social_now"]=False
                 elif cmd=="logo_toggle":live["logo_persistent"]=not live.get("logo_persistent",True)

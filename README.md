@@ -37,7 +37,9 @@ El flujo `.github/workflows/windows-release.yml` compila y prueba el ejecutable,
 - **Editor de Lower Thirds:** `http://127.0.0.1:8765/studio.html`, o el acceso desde el panel. Permite elegir Clásica, Minimalista, Litúrgica o Moderna, editar nombre/cargo/subtítulo, colores, opacidad y animaciones. «Probar entrada/salida» solo modifica la vista previa del editor.
 - **Guardar preparación:** guarda el estilo y texto en la configuración local sin cambiar lo que OBS está emitiendo.
 - **Publicar en OBS:** actualiza la salida para mostrar el Lower Third personalizado. «Imagen limpia» lo retira inmediatamente; «Restaurar» recupera la preparación vigente.
-- **Dock:** `http://127.0.0.1:8765/dock.html`, para añadir como Dock de navegador personalizado en OBS. Comparte el mismo estado local con el panel y el editor; ofrece edición rápida del texto y acceso al editor completo.
+- **Panel web:** `http://127.0.0.1:8765/panel.html`. Aquí se preparan los gráficos, los participantes, la portada, el logo y las paletas. El formulario «Preparar un gráfico» muestra solo los campos adecuados al tipo elegido: por ejemplo, título y referencia para lecturas, o título y mensaje para la espera. «Guardar sin mostrar» conserva la preparación; «Mostrar en OBS» la emite.
+- **Dock:** `http://127.0.0.1:8765/dock.html`, para añadir como Dock de navegador personalizado en OBS. Es exclusivamente un **lanzador durante la transmisión**: gráficos preparados en el panel, Lower Third, participante, pantalla de espera, cuenta regresiva, imagen limpia, logo y redes. No permite editar nombres, textos ni diseños; ofrece enlaces al panel y al Estudio para configurarlos.
+- **Volver al panel:** el Estudio incluye el acceso «Volver al panel principal».
 - Los niveles **Esencial, Personalizar y Avanzado** controlan qué ajustes se ven, sin publicar ni borrar cambios.
 
 Para verificar la integración en una PC de pruebas: abrir el editor, guardar un nombre y confirmar que no cambia OBS; publicar, comprobar animación; limpiar, restaurar, y repetir desde el Dock. No utilizar una transmisión real para la primera validación.

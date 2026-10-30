@@ -5,6 +5,7 @@ import json
 import tempfile
 import threading
 import unittest
+from html.parser import HTMLParser
 from http.server import ThreadingHTTPServer
 from pathlib import Path
 from urllib.error import HTTPError
@@ -14,6 +15,23 @@ import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import servidor
+
+
+class PageStructure(HTMLParser):
+    def __init__(self):
+        super().__init__()
+        self.ids = set()
+        self.controls = []
+        self.links = []
+
+    def handle_starttag(self, tag, attrs):
+        props = dict(attrs)
+        if props.get("id"):
+            self.ids.add(props["id"])
+        if tag in ("input", "select", "textarea"):
+            self.controls.append(tag)
+        if tag == "a":
+            self.links.append(props.get("href"))
 
 
 class LowerThirdIntegrationTests(unittest.TestCase):
@@ -100,7 +118,7 @@ class LowerThirdIntegrationTests(unittest.TestCase):
             with self.subTest(page=page), urlopen(self.base + page, timeout=3) as response:
                 self.assertEqual(response.status, 200)
 
-    def test_dock_quick_text_does_not_reset_saved_animation(self):
+    def test_draft_text_does_not_reset_saved_animation(self):
         self.post("draft", updates={"lower_third": {"template": "liturgical", "enter": "rise", "exit": "right"}})
         self.post("draft", updates={"mode": "lower_third", "lower_third": {"name": "Nombre desde Dock", "role": "Lector"}})
         current = self.get("/api/draft")["lower_third"]
@@ -108,6 +126,45 @@ class LowerThirdIntegrationTests(unittest.TestCase):
         self.assertEqual(current["template"], "liturgical")
         self.assertEqual(current["enter"], "rise")
         self.assertEqual(current["exit"], "right")
+
+    def test_dock_launch_uses_web_configuration_without_editing_it(self):
+        self.post("draft", updates={
+            "mode": "lectura", "title": "Primera lectura",
+            "participants": {"celebrante": "P. Ejemplo", "diacono": "", "lectores": ["Ana"], "monitores": []},
+            "lower_third": {"name": "Panelista", "template": "modern"},
+        })
+        prepared = self.get("/api/draft")
+        for selected in ("lower_third", "participante"):
+            with self.subTest(mode=selected):
+                self.post("launch", mode=selected)
+                live = self.get("/api/state")
+                self.assertEqual(live["mode"], selected)
+                self.assertTrue(live["visible"])
+                self.assertEqual(self.get("/api/draft"), prepared)
+        self.assertEqual(self.get("/api/state")["lower_third"]["template"], "modern")
+        with self.assertRaises(HTTPError) as error:
+            self.post("launch", mode="espera")
+        self.assertEqual(error.exception.code, 400)
+        self.post("draft", updates={"mode": "espera", "title": "Santa Misa"})
+        self.post("launch", mode="espera")
+        self.assertEqual(self.get("/api/state")["title"], "Santa Misa")
+        with self.assertRaises(HTTPError) as error:
+            self.post("launch", mode="incidencia")
+        self.assertEqual(error.exception.code, 400)
+
+    def test_configuration_stays_in_web_panel_and_studio(self):
+        pages = {}
+        for name in ("dock.html", "panel.html", "studio.html"):
+            page = PageStructure()
+            page.feed((Path(__file__).resolve().parents[1] / name).read_text(encoding="utf-8"))
+            pages[name] = page
+        self.assertFalse(pages["dock.html"].controls, "El Dock no debe incluir campos de edición")
+        self.assertIn("/panel.html", pages["dock.html"].links)
+        self.assertIn("/studio.html", pages["dock.html"].links)
+        self.assertIn("/panel.html", pages["studio.html"].links)
+        for control in ("mode", "modeHelp", "contentFields", "applySuggestion", "logoSettings", "colorSettings", "coverSettings"):
+            self.assertIn(control, pages["panel.html"].ids)
+        self.assertNotIn("template", pages["panel.html"].ids)
 
 
 if __name__ == "__main__":
