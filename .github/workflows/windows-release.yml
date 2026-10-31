@@ -2,7 +2,7 @@ name: Windows · compilar y distribuir
 
 on:
   pull_request:
-    branches: [main, feature/graphics-live-integration]
+    branches: [main, feature/graphics-live-integration, feature/lan-remote-access]
   push:
     tags:
       - 'v*'
