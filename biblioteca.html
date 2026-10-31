@@ -26,7 +26,7 @@ label{font-size:13px;font-weight:650;display:block;margin:12px 0 5px}
 #editor{background:#f7f9fb;border-radius:12px;padding:14px}#editor[hidden]{display:none}
 #note{min-height:20px;color:#246b50}#note.error{color:#9a2e2e}
 .preview-stage{position:relative;width:100%;aspect-ratio:16/9;overflow:hidden;border-radius:10px;background:#17212e;border:1px solid #98a9ba;margin:12px 0}
-.preview-stage iframe{position:absolute;top:0;left:0;width:1920px;height:1080px;border:0;transform-origin:top left;pointer-events:none}
+.preview-stage iframe{position:absolute;top:0;left:0;width:1920px;height:1080px;border:0;transform-origin:top left;transform:scale(.04);pointer-events:none}
 #socialRotation[hidden],#socialLogoControls[hidden],#previewStage[hidden]{display:none}
 #socialLogoThumb{height:54px;width:54px;object-fit:contain;background:#e8edf4;border-radius:10px}
 .social-controls{background:#f5f8fb;border:1px solid #d9e2eb;padding:12px;border-radius:10px;margin:12px 0}
@@ -66,7 +66,7 @@ const networkNames={instagram:'Instagram',facebook:'Facebook',youtube:'YouTube',
 function scalePreview(){const stage=$('previewStage');$('obsPreview').style.transform='scale('+(stage.clientWidth/1920)+')'}
 window.addEventListener('message',event=>{if(event.origin===location.origin&&event.source===$('obsPreview').contentWindow&&event.data?.type==='plobs-preview-ready'){previewReady=true;scalePreview();preview('enter')}});
 $('obsPreview').addEventListener('load',()=>{scalePreview();$('obsPreview').contentWindow.postMessage({type:'plobs-preview-ping'},location.origin);preview('enter')});
-if(typeof ResizeObserver!=='undefined')new ResizeObserver(scalePreview).observe($('previewStage'));
+scalePreview();if(typeof ResizeObserver!=='undefined')new ResizeObserver(scalePreview).observe($('previewStage'));
 function previewItemData(){const payload={...editing.data};for(const [key] of fields[kind])payload[key]=$('field-'+key)?.value||'';return payload}
 function previewState(){
  const payload=previewItemData(),base={...baseForPreview,visible:true,social_rotation:null,social_enabled:false,social_now:false,social_during_mass:false};
