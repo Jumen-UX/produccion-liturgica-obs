@@ -45,3 +45,15 @@ Entorno: Windows, navegador Chromium/Edge y dock de OBS cuando esté integrado.
 - [ ] Reiniciar OBS y comprobar reconexión y ausencia de un indicador AL AIRE obsoleto.
 - [ ] Verificar que Conexiones, Identidad y Guía se despliegan por teclado y que los botones de conectar abren los ajustes.
 - [ ] Confirmar que preparar, publicar, limpiar, restaurar y observar la salida siguen accesibles con los ajustes plegados.
+
+## Interfaces adaptativas: Dock, remoto y panel web
+
+- Prueba reproducible: `node tests/test_responsive_interfaces.cjs` (Chrome/Edge instalado, o ruta en `CHROME_BINARY`).
+- Verificado localmente en Windows/Chromium: 48 combinaciones (anchos 240, 280, 320, 375, 480, 768, 960 y 1280; alturas 360 y 800), sin desbordamiento horizontal, con secciones desplegadas.
+- Eventos reales del navegador con HTTP/OBS simulados: guardar frente a publicar, lanzar, limpiar/restaurar, temporizador, logo/redes, accesos a ajustes, consulta sin permisos, desconexión y prevención de clics duplicados mientras una orden sigue pendiente.
+- Dock y remoto: estado y controles de salida primero; gráficos preparados después; logo y redes en un desplegable. La cabecera operativa permanece al desplazar cuando la altura permite hacerlo.
+- Panel web estrecho: salida antes de preparación; vista previa desplegable; participantes agrupados, con apertura directa desde «Ir a participantes». Controles críticos en la barra compacta, sin botones duplicados en el monitor.
+- [ ] Redimensionar el Dock dentro de OBS real y probar cada control en una transmisión simulada.
+- [ ] Comprobar el remoto en el teléfono real, en vertical/horizontal y con textos largos.
+- [ ] Revisar teclado/foco y uso con zoom del navegador en el panel.
+- Estas pruebas simuladas no certifican la salida real de OBS ni reemplazan la validación del dispositivo.
