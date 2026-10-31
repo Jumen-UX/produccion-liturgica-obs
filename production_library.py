@@ -108,6 +108,15 @@ class ProductionLibrary:
             raise ValueError("Producción inexistente")
         return found
 
+    def get_item(self, pid, item_id):
+        with self.lock:
+            item = next((i for i in self._find(pid)["items"] if i["id"] == item_id), None)
+            if item is None:
+                raise ValueError("Elemento inexistente")
+            if not item["enabled"]:
+                raise ValueError("Este elemento está desactivado")
+            return copy.deepcopy(item)
+
     def apply(self, request):
         if not isinstance(request, dict):
             raise ValueError("Solicitud inválida")
