@@ -58,7 +58,7 @@ last_visible_state=None
 MODES={"espera","cintillo","lectura","salmo","evangelio","homilia","ofertorio","comunion","avisos","cierre","limpio","incidencia","participante","lower_third"}
 THEMES={"ordinario","adviento","navidad","cuaresma","pascua","pentecostes","martires","blanco","rojo","verde","morado","rosa","negro","personalizado"}
 MEDIA_RE=re.compile(r"^/media/[a-f0-9]{32}\.(?:png|jpg|webp|mp4|webm)$")
-STATIC_PAGES={"/panel.html","/overlay.html","/dock.html","/studio.html","/login.html","/remote.html"}
+STATIC_PAGES={"/panel.html","/overlay.html","/dock.html","/studio.html","/biblioteca.html","/login.html","/remote.html"}
 REMOTE_READ={"/api/state","/api/draft","/api/obs-status","/api/session","/api/events"}
 REMOTE_COMMANDS={"publish","launch","clean","restore","timer_start","timer_pause","timer_reset","social_show","social_hide","logo_toggle"}
 def persist():
