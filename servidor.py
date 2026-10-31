@@ -60,7 +60,7 @@ THEMES={"ordinario","adviento","navidad","cuaresma","pascua","pentecostes","mart
 MEDIA_RE=re.compile(r"^/media/[a-f0-9]{32}\.(?:png|jpg|webp|mp4|webm)$")
 STATIC_PAGES={"/panel.html","/overlay.html","/dock.html","/studio.html","/biblioteca.html","/login.html","/remote.html"}
 REMOTE_READ={"/api/state","/api/draft","/api/obs-status","/api/session","/api/events"}
-REMOTE_COMMANDS={"publish","launch","clean","restore","timer_start","timer_pause","timer_reset","social_show","social_hide","logo_toggle"}
+REMOTE_COMMANDS={"publish","launch","clean","restore","timer_start","timer_pause","timer_reset","social_show","social_hide","social_rotation_start","social_rotation_stop","logo_toggle"}
 def persist():
     DATA.write_text(json.dumps({k:v for k,v in draft.items() if k not in ("running","end_at","remaining")},ensure_ascii=False,indent=2),encoding="utf-8")
 def snapshot():
@@ -310,12 +310,14 @@ class Handler(SimpleHTTPRequestHandler):
                     if draft["mode"]=="incidencia" and data.get("confirm_incidence") is not True:
                         raise ValueError("Confirma expresamente el aviso de dificultades técnicas antes de mostrarlo")
                     for k in EDIT:live[k]=copy.deepcopy(draft[k])
+                    live.pop("library_item",None)
                 elif cmd=="launch":
                     mode=data.get("mode")
                     if mode not in ("espera","participante","lower_third"):raise ValueError("Gráfico no disponible para lanzamiento directo")
                     if mode=="espera" and draft["mode"]!="espera":raise ValueError("Prepara primero la pantalla de espera en el panel")
                     for k in EDIT:live[k]=copy.deepcopy(draft[k])
                     live.update(mode=mode,visible=True)
+                    live.pop("library_item",None)
                 elif cmd=="library_launch":
                     item=PRODUCTIONS.get_item(data.get("production_id"),data.get("item_id"))
                     kind=item["type"];payload=item["data"]
@@ -328,6 +330,15 @@ class Handler(SimpleHTTPRequestHandler):
                                     detail=str(payload.get("body",""))[:500],visible=True)
                     else:
                         raise ValueError("Este tipo aún no dispone de lanzamiento individual")
+                    live["library_item"]={"production_id":data.get("production_id"),"item_id":item["id"]}
+                elif cmd=="social_rotation_start":
+                    playlist=PRODUCTIONS.social_playlist(data.get("production_id"))
+                    # Snapshot de la lista: editar la biblioteca no cambia una emisión ya iniciada.
+                    live["social_rotation"]={**playlist,"started_at":time.time()}
+                    live["social_now"]=True
+                elif cmd=="social_rotation_stop":
+                    live["social_rotation"]=None
+                    live["social_now"]=False
                 elif cmd=="social_show":live["social_now"]=True
                 elif cmd=="social_hide":live["social_now"]=False
                 elif cmd=="logo_toggle":live["logo_persistent"]=not live.get("logo_persistent",True)
