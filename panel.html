@@ -169,6 +169,7 @@ window.addEventListener('message',event=>{
   panelPreviewReady=true;scaleDraftPreview();preview();
  }
 });
+$('draftPreviewFrame').addEventListener('load',()=>{scaleDraftPreview();$('draftPreviewFrame').contentWindow.postMessage({type:'plobs-preview-ping'},location.origin);preview()});
 if(typeof ResizeObserver!=='undefined')new ResizeObserver(scaleDraftPreview).observe($('draftPreviewStage'));
 function preview(){const d=gather();sendDraftPreview({...panelPreviewBase,...d,visible:true,social_rotation:null});const label=d.mode==='participante'?'IDENTIFICACIÓN DE PARTICIPANTE':d.mode.toUpperCase();$('draftMode').textContent='['+(THEMES[d.theme]?.label||'Personalizado')+'] · '+label;$('draftTitle').textContent=d.mode==='participante'?'Identificación de participante':d.title;$('draftSubtitle').textContent=d.mode==='espera'?d.detail:d.subtitle||d.detail;$('draftReference').textContent=d.reference;const names=d.participants[d.role];const person=Array.isArray(names)?names[d.role_index]:names;$('draftPerson').textContent=d.mode==='participante'?(person||'Escribe o selecciona un nombre'):''}
 function configureFields(){
