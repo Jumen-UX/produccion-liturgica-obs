@@ -86,5 +86,26 @@ persistent.classList.toggle('show',logoVisible);
 if(s.logo_video){if(video.getAttribute('src')!==s.logo_video){video.src=s.logo_video;video.load();video.play().catch(()=>{});}video.style.display='block';img.style.display='none';}
 else{video.style.display='none';if(!video.paused)video.pause();img.style.display='block';if(s.logo&&img.getAttribute('src')!==s.logo)img.src=s.logo;}
 for(let [id,show] of [['waitLogo',mode==='espera'],['fullLogo',full]]){let img=el(id);img.classList.toggle('hidden',!show||!s.logo);if(s.logo&&img.getAttribute('src')!==s.logo)img.setAttribute('src',s.logo)}oldMode=mode}
-async function tick(){try{let r=await fetch('/api/state',{cache:'no-store'});render(await r.json())}catch(e){}}setInterval(tick,500);tick();
+// La vista previa utiliza exactamente este mismo DOM y CSS. No lee ni modifica la salida real.
+const previewMode=new URLSearchParams(location.search).get('preview')==='1';
+if(previewMode){
+ window.addEventListener('message',event=>{
+  if(event.source!==window.parent||event.origin!==location.origin)return;
+  const message=event.data;
+  if(!message||message.type!=='plobs-preview'||!message.state||typeof message.state!=='object')return;
+  if(message.phase==='exit'){
+   syncStyledLower(message.state,'preview-exit');
+   return;
+  }
+  if(message.phase==='enter'){
+   styledActive=false;clearTimeout(styledTimer);
+   el('styledLower').className='styled-lower hidden';
+  }
+  render(message.state);
+ });
+ window.parent.postMessage({type:'plobs-preview-ready'},location.origin);
+}else{
+ async function tick(){try{let r=await fetch('/api/state',{cache:'no-store'});render(await r.json())}catch(e){}}
+ setInterval(tick,500);tick();
+}
 </script></body></html>
