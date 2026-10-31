@@ -42,6 +42,36 @@ class ProductionLibraryTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.library.apply({"action":"add","item":{"type":"titulo","name":"X","data":{"html":"x"*15000}}})
 
+    def test_social_rotation_playlist_settings_and_logos(self):
+        state = self.library.snapshot()
+        pid = state["active_id"]
+        playlist = self.library.social_playlist(pid)
+        self.assertEqual([item["network"] for item in playlist["items"]], ["instagram", "youtube"])
+        self.assertEqual(playlist["settings"]["duration"], 7)
+        self.library.apply({"action":"social_settings", "settings":{
+            "duration": 8, "interval": 15, "loop": False, "placement": "directo"}})
+        self.assertEqual(self.library.social_playlist(pid)["settings"]["interval"],15)
+        self.assertFalse(self.library.social_playlist(pid)["settings"]["loop"])
+        self.assertEqual(ProductionLibrary(self.path).social_playlist(pid)["settings"]["placement"], "directo")
+        with self.assertRaises(ValueError):
+            self.library.apply({"action":"social_settings", "settings":{"duration": 20, "interval": 4}})
+        with self.assertRaises(ValueError):
+            self.library.apply({"action":"add","item":{"type":"red_social","name":"Mala URL",
+                "data":{"network":"instagram","handle":"@test","logo":"https://evil.example/tracker.png"}}})
+        logo = "/media/" + "a" * 32 + ".webp"
+        result=self.library.apply({"action":"add","item":{"type":"red_social","name":"Con imagen propia",
+               "data":{"network":"facebook","handle":"Mi página","phrase":"Dale like","logo":logo}}})
+        self.assertEqual(result["productions"][0]["items"][-1]["data"]["logo"], logo)
+
+    def test_social_rotation_requires_enabled_item(self):
+        state = self.library.apply({"action":"create_production","name":"Vacía"})
+        with self.assertRaises(ValueError):
+            self.library.social_playlist(state["active_id"])
+        self.library.apply({"action":"add","item":{"type":"red_social","name":"Solo desactivada",
+            "enabled":False,"data":{"network":"youtube","handle":"Mi canal","phrase":"Suscríbete","logo":""}}})
+        with self.assertRaises(ValueError):
+            self.library.social_playlist(state["active_id"])
+
 
 if __name__=="__main__":
     unittest.main()
