@@ -43,6 +43,12 @@ El flujo `.github/workflows/windows-release.yml` compila y prueba el ejecutable,
 
 Si ejecutas desde código fuente (sin EXE) y quieres generar QR, instala una vez `python -m pip install qrcode` antes de iniciar el programa. El EXE Windows incorpora esa dependencia.
 
+## Biblioteca de producciones (primera fase)
+
+Desde el panel principal entra a **Biblioteca de producciones**, o abre `http://127.0.0.1:8765/biblioteca.html`. Permite crear producciones, guardar varios recursos por categoría, editarlos, duplicarlos, habilitarlos/deshabilitarlos, eliminarlos y cambiar su orden. Incluye una producción de ejemplo editable y almacena el catálogo en `%LOCALAPPDATA%\\ProduccionLiturgicaOBS\\producciones.json` (o junto al código en ejecución de desarrollo). No sobrescribe la configuración existente `configuracion.json`.
+
+Los Lower Thirds y los elementos de texto (títulos, lecturas, salmos, avisos y frases) admiten **lanzamiento individual** desde la biblioteca, con confirmación del estado de OBS disponible en el panel/Dock. Los demás tipos son todavía **registros preparados**, no salidas gráficas implementadas: la rotación de redes, selección de logos propios, gráficos multimedia, programación y operación desde una lista específica en Dock quedan para siguientes fases. Ninguna biblioteca puede afirmar EN VIVO sin la comprobación OBS correspondiente.
+
 ## Biblioteca de gráficos y Dock
 
 - **Editor de Lower Thirds:** `http://127.0.0.1:8765/studio.html`, o el acceso desde el panel. Permite elegir Clásica, Minimalista, Litúrgica o Moderna, editar nombre/cargo/subtítulo, colores, opacidad y animaciones. «Probar entrada/salida» solo modifica la vista previa del editor.
