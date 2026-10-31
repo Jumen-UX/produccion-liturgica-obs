@@ -54,10 +54,11 @@ body{max-width:1320px;margin-inline:auto}
 @media(min-width:760px){
  body{padding:20px}
  .dock-layout{display:grid;grid-template-columns:minmax(260px,.9fr) minmax(0,1.6fr);gap:14px;align-items:start;
- grid-template-areas:"live launch" "timer launch" "aux launch" "links links"}
+ grid-template-areas:"live launch" "timer library" "aux library" "links links"}
  .live-controls{grid-area:live;position:static;padding:0}
  .launch-section{grid-area:launch}
  .timer-section{grid-area:timer}
+ .library-section{grid-area:library}
  .aux-section{grid-area:aux}
  .links{grid-area:links;justify-content:flex-end}
  .links a{flex:0 1 200px}
@@ -72,6 +73,15 @@ body{max-width:1320px;margin-inline:auto}
  .graphic.active{border:1px solid #2eba88;padding:14px}
  .graphic>button{align-self:flex-start;min-width:100px}
 }
+.library-item{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:7px;padding:8px 0;border-top:1px solid #394657}
+.library-item:first-child{border-top:0}
+.library-item strong{display:block;font-size:12px}
+.library-item small{color:#9fb2c7;font-size:11px;display:block;margin-top:3px}
+.library-item.active{border-left:3px solid #2eba88;padding-left:8px;background:#182e38}
+.library-item button{padding:7px 10px;min-height:34px}
+.library-section details{border:1px solid #35475c;border-radius:8px;padding:10px;margin:7px 0}
+.library-section .social-actions{margin-top:12px}
+@media(max-width:310px){.library-item{grid-template-columns:1fr}.library-item button{width:100%}}
 </style></head><body>
 <header><h1>Producción Litúrgica · Control gráfico</h1><span class="status" id="status">Conectando…</span></header>
 <main class="dock-layout"><div class="live-controls"><div class="air-box" role="status" aria-live="polite"><div class="head"><strong>Estado del gráfico en OBS</strong><span class="air-badge unknown" id="airBadge">SIN VERIFICAR</span></div><div id="airGraphic" style="margin-top:8px;font-size:13px;font-weight:700">Consultando…</div><small id="airDetail">La conexión con OBS permite confirmar qué aparece en programa.</small></div>
@@ -83,6 +93,9 @@ body{max-width:1320px;margin-inline:auto}
 <div class="graphic" id="graphicPerson"><div><strong>Identificación de participante <span class="graphic-state" id="statePerson"></span></strong><small id="personSummary">Cargando participantes…</small></div><button id="launchPerson" class="secondary">Lanzar</button></div>
 <div class="graphic" id="graphicWait"><div><strong>Pantalla de espera <span class="graphic-state" id="stateWait"></span></strong><small id="waitSummary">Cuenta regresiva y avisos preparados en el panel</small></div><button id="launchWait" class="secondary">Lanzar</button></div>
 <p class="hint">El Dock lanza gráficos y verifica su estado en OBS; no modifica la configuración. Los nombres, diseños y textos se editan en el panel web o en el Estudio.</p></section>
+<section class="library-section"><div class="links" style="margin-bottom:12px"><a href="/biblioteca.html" target="_blank" rel="noopener">Editar biblioteca en el panel</a></div><h2 id="libraryTitle">Gráficos de la producción</h2><p class="hint">Selecciona un elemento preparado para mostrarlo. Los cambios de diseño se realizan en el panel, no aquí.</p><div id="libraryItems"><p class="hint">Cargando biblioteca…</p></div>
+<div class="social-actions buttons"><button id="startSocial">▶ Rotar redes</button><button id="stopSocial" class="secondary">■ Detener rotación</button></div>
+<div id="socialRotationStatus" class="hint" role="status">Redes sin rotación activa.</div></section>
 <section class="timer-section"><h2>Cuenta regresiva</h2><div class="timer" id="timer">15:00</div>
 <div class="buttons"><button id="timerStart">Iniciar</button><button id="timerPause" class="secondary">Pausar</button><button id="timerReset" class="secondary">Reiniciar</button></div></section>
 <section class="aux-section"><details><summary>Logo y redes sociales</summary>
@@ -93,7 +106,7 @@ body{max-width:1320px;margin-inline:auto}
 <script>
 'use strict';
 const $=id=>document.getElementById(id),modeNames={espera:'Espera y cuenta regresiva',cintillo:'Cintillo general',lectura:'Lectura',salmo:'Salmo responsorial',evangelio:'Evangelio',homilia:'Homilía',ofertorio:'Ofertorio',comunion:'Comunión',avisos:'Avisos',cierre:'Cierre',incidencia:'Aviso técnico',participante:'Participante',lower_third:'Lower Third personalizado',limpio:'Imagen limpia'};
-let live=null,draft=null,obs=null,connected=false,refreshing=false;const pendingControls=new Set();
+let live=null,draft=null,obs=null,library=null,connected=false,refreshing=false,librarySignature=null;const pendingControls=new Set();
 const airStates={al_aire:['● AL AIRE','onair','OBS transmite y la fuente de este gráfico está activa en programa.'],en_programa:['EN PROGRAMA','program','El gráfico está en el programa de OBS; la transmisión no está activa.'],fuera_de_programa:['FUERA DE PROGRAMA','hidden','La fuente configurada no está activa en la salida de programa de OBS.'],imagen_limpia:['IMAGEN LIMPIA','hidden','No hay gráfico publicado en la salida local.'],sin_verificar:['SIN VERIFICAR','unknown','No se ha confirmado que el gráfico esté en programa. Configura OBS en el panel web.']};
 async function fetchJSON(url,options={},allowStatusError=false){const response=await fetch(url,{cache:'no-store',...options});const data=await response.json();if(!response.ok||(!allowStatusError&&data.error))throw Error(data.error||'Error del servidor ('+response.status+')');return data}
 async function command(name,extra={}){return fetchJSON('/api/update',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({command:name,...extra})})}
@@ -120,9 +133,48 @@ function render(){
  if(!person)$('launchPerson').disabled=true;
  const readyToWait=draft?.mode==='espera';$('waitSummary').textContent=readyToWait?'Portada y mensajes listos en el panel':'Selecciona «Espera y cuenta regresiva» en el panel y guarda la preparación';
  if(!readyToWait)$('launchWait').disabled=true;
+ renderLibrary();
  $('timer').textContent=String(Math.floor((live?.remaining||0)/60)).padStart(2,'0')+':'+String((live?.remaining||0)%60).padStart(2,'0');
 }
-async function refresh(){if(refreshing)return;refreshing=true;try{[live,draft,obs]=await Promise.all([fetchJSON('/api/state'),fetchJSON('/api/draft'),fetchJSON('/api/obs-status',{},true)]);connected=true;render()}catch(error){connected=false;obs=null;render();tell('No se pudo consultar el servidor local.',true)}finally{refreshing=false}}
+const libraryTypeLabels={lower_third:'Lower Thirds',titulo:'Títulos',lectura:'Lecturas',salmo:'Salmos',aviso:'Avisos',frase:'Frases'};
+const libraryTypes=new Set(Object.keys(libraryTypeLabels));
+function renderLibrary(){
+ const production=library?.productions?.find(p=>p.id===library.active_id);
+ if(!production){$('libraryTitle').textContent='Biblioteca no disponible';$('libraryItems').textContent='Consulta el panel web para preparar gráficos.';$('startSocial').disabled=true;$('stopSocial').disabled=true;return}
+ $('libraryTitle').textContent='Producción · '+production.name;
+ const hash=JSON.stringify([production.id,production.items.map(item=>[item.id,item.name,item.enabled,item.type])]);
+ if(hash!==librarySignature){
+  librarySignature=hash;const root=$('libraryItems');root.replaceChildren();
+  for(const [type,label] of Object.entries(libraryTypeLabels)){
+   const items=production.items.filter(item=>item.type===type);
+   if(!items.length)continue;
+   const details=document.createElement('details');details.open=(type==='lower_third');const summary=document.createElement('summary');summary.textContent=label+' · '+items.length;details.append(summary);
+   for(const item of items){
+    const row=document.createElement('div');row.className='library-item';row.dataset.itemId=item.id;row.dataset.productionId=production.id;
+    const info=document.createElement('div');const title=document.createElement('strong');title.textContent=item.name;
+    const status=document.createElement('small');status.className='library-status';status.textContent=item.enabled?'Preparado':'Desactivado';info.append(title,status);
+    const b=document.createElement('button');b.textContent='▶ Lanzar';b.disabled=!item.enabled;b.className=item.enabled?'':'secondary';b.onclick=()=>perform(()=>command('library_launch',{production_id:production.id,item_id:item.id}),item.name+' enviado a OBS.');
+    row.append(info,b);details.append(row);
+   }root.append(details)
+  }
+  if(!root.children.length)root.textContent='No hay gráficos preparados. Agrégalos en la biblioteca del panel.';
+ }
+ const active=live?.visible!==false&&live?.mode!=='limpio'?live?.library_item:null;
+ const status=obs?.graphic_status||'sin_verificar';
+ for(const row of $('libraryItems').querySelectorAll('.library-item')){
+  const selected=!!active&&active.production_id===row.dataset.productionId&&active.item_id===row.dataset.itemId;
+  row.classList.toggle('active',selected);
+  row.querySelector('.library-status').textContent=selected?
+      status==='al_aire'?'● AL AIRE':status==='en_programa'?'EN PROGRAMA':status==='fuera_de_programa'?'FUERA DE PROGRAMA':'PUBLICADO · SIN VERIFICAR':
+      row.querySelector('button').disabled?'Desactivado':'Preparado';
+ }
+ const rotation=live?.social_rotation;
+ const running=!!(rotation&&live.social_now!==false);
+ $('socialRotationStatus').textContent=running?'Rotación habilitada · '+rotation.items.length+' redes. Su visibilidad depende del modo de salida.':'Rotación no iniciada.';
+ $('startSocial').disabled=!connected||!production.items.some(i=>i.type==='red_social'&&i.enabled);
+ $('stopSocial').disabled=!connected||!running;
+}
+async function refresh(){if(refreshing)return;refreshing=true;try{[live,draft,obs]=await Promise.all([fetchJSON('/api/state'),fetchJSON('/api/draft'),fetchJSON('/api/obs-status',{},true)]);try{library=await fetchJSON('/api/productions')}catch(error){library=null};connected=true;render()}catch(error){connected=false;obs=null;render();tell('No se pudo consultar el servidor local.',true)}finally{refreshing=false}}
 async function perform(action,description){try{await action();tell(description);await refresh()}catch(error){tell(error.message,true)}}
 $('launchPrepared').onclick=()=>{const incident=draft?.mode==='incidencia';if(incident&&!confirm('¿Mostrar el aviso de dificultades técnicas en la salida gráfica?'))return;return perform(()=>command('publish',{confirm_incidence:incident}),'Gráfico preparado enviado a la salida.');};
 $('launchLower').onclick=()=>perform(()=>command('launch',{mode:'lower_third'}),'Lower Third enviado a la salida.');
@@ -136,6 +188,8 @@ $('timerReset').onclick=()=>perform(()=>command('timer_reset'),'Cuenta regresiva
 $('logo').onclick=()=>perform(()=>command('logo_toggle'),'Visibilidad del logo actualizada.');
 $('social').onclick=()=>perform(()=>command('social_show'),'Redes sociales activadas.');
 $('hideSocial').onclick=()=>perform(()=>command('social_hide'),'Redes sociales ocultadas.');
+$('startSocial').onclick=()=>perform(()=>command('social_rotation_start',{production_id:library?.active_id}),'Rotación de redes iniciada.');
+$('stopSocial').onclick=()=>perform(()=>command('social_rotation_stop'),'Rotación de redes detenida.');
 document.querySelectorAll('button').forEach(button=>{
  const handler=button.onclick;if(!handler)return;
  button.onclick=async()=>{if(button.disabled||pendingControls.has(button))return;
