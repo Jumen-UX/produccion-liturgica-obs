@@ -14,7 +14,7 @@ Entorno: Windows, navegador Chromium/Edge y dock de OBS cuando esté integrado.
 - [ ] Restaurar y comprobar la salida previa prevista.
 - [ ] Probar navegación de teclado, foco visible y pantalla estrecha.
 - [ ] Verificar que errores de almacenamiento local no impiden usar la consola.
-- [ ] En modo **Esencial**, localizar las tarjetas «1. Conectar OBS» y «2. Conectar teléfono o tableta» sin ir a Avanzado.
+- [ ] En modo **Esencial**, abrir «Conexiones · OBS y teléfono» y localizar las tarjetas «1. Conectar OBS» y «2. Conectar teléfono o tableta» sin ir a Avanzado.
 - [ ] Con OBS abierto, comprobar detección automática de la fuente de navegador de `overlay.html`; si hay dos coincidencias, no debe seleccionar una arbitrariamente.
 - [ ] Comprobar que el QR aparece en la segunda tarjeta solo al activar acceso remoto con una contraseña válida y que el enlace abre en un móvil de la misma red.
 - [ ] Sin OBS conectado, comprobar que Dock y panel muestran **SIN VERIFICAR**, pero permiten usar Imagen limpia y Restaurar.
@@ -37,3 +37,11 @@ Entorno: Windows, navegador Chromium/Edge y dock de OBS cuando esté integrado.
 - [ ] Si había carpetas de ZIP/EXE portátiles antiguos, retirarlas por separado **solo después** de confirmar la actualización; el instalador no debe eliminarlas automáticamente.
 
 **La integración con OBS y las pruebas visuales requieren ejecución en la computadora del operador.**
+
+## Comprobación de conexión persistente y panel compacto
+
+- El operador confirmó en este chat que pudo conectar desde el móvil y que funciona; esto no acredita todavía todos los casos de la lista.
+- [ ] Con OBS configurado, mantener el panel abierto varios minutos y confirmar que cesan los avisos repetidos de conexión/desconexión.
+- [ ] Reiniciar OBS y comprobar reconexión y ausencia de un indicador AL AIRE obsoleto.
+- [ ] Verificar que Conexiones, Identidad y Guía se despliegan por teclado y que los botones de conectar abren los ajustes.
+- [ ] Confirmar que preparar, publicar, limpiar, restaurar y observar la salida siguen accesibles con los ajustes plegados.
