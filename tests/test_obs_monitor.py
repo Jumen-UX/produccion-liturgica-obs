@@ -80,6 +80,59 @@ class FakeOBS(socketserver.BaseRequestHandler):
 
 
 class OBSMonitorTests(unittest.TestCase):
+
+    def test_monitor_reuses_socket_and_diagnostic_confirmation(self):
+        with tempfile.TemporaryDirectory() as directory:
+            monitor = OBSMonitor(Path(directory) / "obs.json", start_worker=False)
+            monitor.configure({"source_name": "Navegador 2"})
+            client = MagicMock()
+            client.request.side_effect = lambda name, data=None: (
+                {"outputActive": True} if name == "GetStreamStatus" else {"videoActive": True})
+            with patch("obs_monitor.OBSWebSocket", return_value=client) as connect:
+                for _ in range(4):
+                    monitor._poll_once()
+                    self.assertEqual(monitor.diagnostic()["state"], "ready")
+                connect.assert_called_once()
+                client.close.assert_not_called()
+                self.assertEqual(client.request.call_count, 8)
+                self.assertTrue(monitor.get_status()["connected"])
+            monitor._close_client()
+
+    def test_monitor_reconnects_after_failure_and_configuration_change(self):
+        with tempfile.TemporaryDirectory() as directory:
+            monitor = OBSMonitor(Path(directory) / "obs.json", start_worker=False)
+            monitor.configure({"source_name": "Navegador 2"})
+            first, second, third = MagicMock(), MagicMock(), MagicMock()
+            for client in (first, second, third):
+                client.request.side_effect = lambda name, data=None: (
+                    {"outputActive": True} if name == "GetStreamStatus" else {"videoActive": True})
+            with patch("obs_monitor.OBSWebSocket", side_effect=[first, second, third]) as connect:
+                monitor._poll_once()
+                first.request.side_effect = OSError("Conexión interrumpida")
+                monitor._poll_once()
+                self.assertFalse(monitor.get_status()["connected"])
+                self.assertIsNone(monitor.get_status()["streaming"])
+                first.close.assert_called_once()
+                monitor._poll_once()
+                self.assertTrue(monitor.get_status()["connected"])
+                monitor.configure({"port": 4456, "source_name": "Otra fuente", "password": "nueva"})
+                monitor._poll_once()
+                second.close.assert_called_once()
+                connect.assert_called_with(4456, "nueva")
+                self.assertEqual(connect.call_count, 3)
+                monitor.configure({"source_name": ""})
+                monitor._poll_once()
+                third.close.assert_called_once()
+                self.assertFalse(monitor.get_status()["connected"])
+            monitor._close_client()
+
+    def test_stale_confirmation_is_not_reused_by_diagnostic(self):
+        with tempfile.TemporaryDirectory() as directory:
+            monitor = OBSMonitor(Path(directory) / "obs.json", start_worker=False)
+            monitor.status.update(connected=True, checked_at=1)
+            with patch("obs_monitor.OBSWebSocket", side_effect=ConnectionRefusedError):
+                self.assertEqual(monitor.diagnostic()["state"], "unavailable")
+
     def test_websocket_diagnostic_works_before_source_configuration(self):
         with tempfile.TemporaryDirectory() as directory:
             monitor = OBSMonitor(Path(directory) / "conexion_obs.json", start_worker=False)
