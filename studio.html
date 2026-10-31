@@ -101,7 +101,7 @@ window.addEventListener('message',event=>{
   frameReady=true;scalePreview();sendPreview('enter');
  }
 });
-$('obsPreview').addEventListener('load',()=>{scalePreview();sendPreview('enter')});
+$('obsPreview').addEventListener('load',()=>{scalePreview();$('obsPreview').contentWindow.postMessage({type:'plobs-preview-ping'},location.origin);sendPreview('enter')});
 if(typeof ResizeObserver!=='undefined')new ResizeObserver(scalePreview).observe($('previewStage'));
 window.addEventListener('resize',scalePreview);
 ids.forEach(id=>$(id).addEventListener('input',render));
