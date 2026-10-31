@@ -64,7 +64,7 @@ def _item(data, existing=None):
         if payload.get("network", "") not in SOCIAL_NETWORKS:
             raise ValueError("Red social no admitida")
         logo = payload.get("logo", "")
-        if not isinstance(logo, str) or (logo and not re.fullmatch(r"/media/[a-f0-9]{32}\\.(?:png|jpg|webp)", logo)):
+        if not isinstance(logo, str) or (logo and not re.fullmatch(r"/media/[a-f0-9]{32}\.(?:png|jpg|webp)", logo)):
             raise ValueError("Logo no autorizado: utiliza un archivo subido al panel")
         payload = {
             "network": payload.get("network", "website"),
