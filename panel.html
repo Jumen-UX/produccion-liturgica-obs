@@ -161,7 +161,7 @@ function roleInputs(type){const root=$(type);root.replaceChildren();roleList[typ
 function choices(){const role=$('role').value;let a=role==='lectores'||role==='monitores'?roleList[role]:[$(role).value];let previous=Number($('role_index').value||0);$('role_index').replaceChildren();a.forEach((v,i)=>{const opt=document.createElement('option');opt.value=i;opt.textContent=(v||({lectores:'Lector',monitores:'Monitor'}[role]||'Persona')+' '+(i+1));$('role_index').append(opt)});$('role_index').selectedIndex=Math.min(previous,a.length-1)}
 function scaleDraftPreview(){const stage=$('draftPreviewStage');$('draftPreviewFrame').style.transform='scale('+(stage.clientWidth/1920)+')'}
 function sendDraftPreview(state){
- if(!panelPreviewReady)return;
+ if(!panelPreviewReady||location.origin==='null')return;
  $('draftPreviewFrame').contentWindow.postMessage({type:'plobs-preview',phase:'update',state},location.origin);
 }
 window.addEventListener('message',event=>{
@@ -169,7 +169,7 @@ window.addEventListener('message',event=>{
   panelPreviewReady=true;scaleDraftPreview();preview();
  }
 });
-$('draftPreviewFrame').addEventListener('load',()=>{scaleDraftPreview();$('draftPreviewFrame').contentWindow.postMessage({type:'plobs-preview-ping'},location.origin);preview()});
+$('draftPreviewFrame').addEventListener('load',()=>{scaleDraftPreview();if(location.origin!=='null')$('draftPreviewFrame').contentWindow.postMessage({type:'plobs-preview-ping'},location.origin);preview()});
 scaleDraftPreview();if(typeof ResizeObserver!=='undefined')new ResizeObserver(scaleDraftPreview).observe($('draftPreviewStage'));
 function preview(){const d=gather();sendDraftPreview({...panelPreviewBase,...d,visible:true,social_rotation:null});const label=d.mode==='participante'?'IDENTIFICACIÓN DE PARTICIPANTE':d.mode.toUpperCase();$('draftMode').textContent='['+(THEMES[d.theme]?.label||'Personalizado')+'] · '+label;$('draftTitle').textContent=d.mode==='participante'?'Identificación de participante':d.title;$('draftSubtitle').textContent=d.mode==='espera'?d.detail:d.subtitle||d.detail;$('draftReference').textContent=d.reference;const names=d.participants[d.role];const person=Array.isArray(names)?names[d.role_index]:names;$('draftPerson').textContent=d.mode==='participante'?(person||'Escribe o selecciona un nombre'):''}
 function configureFields(){
