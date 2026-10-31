@@ -3,12 +3,22 @@
   #define MyAppVersion "0.1.0"
 #endif
 #define MyAppExeName "ProduccionLiturgicaOBS.exe"
+; Metadatos de ejemplo para builds de prueba. No son una firma digital ni acreditan un editor verificado.
+#define MyAppPublisher "Producción Litúrgica OBS (proyecto de prueba)"
+#define MyAppURL "https://github.com/Jumen-UX/produccion-liturgica-obs"
 
 [Setup]
 AppId={{EFB4DB79-93C8-4E2B-83BA-8EFC2109B0EA}
 AppName={#MyAppName}
 AppVersion={#MyAppVersion}
-AppPublisher=Comunidad Producción Litúrgica OBS
+AppPublisher={#MyAppPublisher}
+AppPublisherURL={#MyAppURL}
+AppSupportURL={#MyAppURL}/issues
+AppUpdatesURL={#MyAppURL}/releases
+VersionInfoCompany={#MyAppPublisher}
+VersionInfoDescription=Instalador de pruebas de Producción Litúrgica OBS
+VersionInfoProductName={#MyAppName}
+VersionInfoCopyright=Proyecto comunitario - metadatos de ejemplo
 DefaultDirName={localappdata}\Programs\ProduccionLiturgicaOBS
 DefaultGroupName={#MyAppName}
 PrivilegesRequired=lowest
