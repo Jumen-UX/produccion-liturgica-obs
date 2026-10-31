@@ -48,7 +48,7 @@ body[data-ui-level=essential] .tier-custom,body[data-ui-level=essential] .tier-a
 button.danger{background:#b33e4b;color:white}button:disabled{opacity:.65;cursor:wait}
 .back-link{display:inline-flex;align-items:center;background:#344961;color:#fff;text-decoration:none;border-radius:7px;padding:10px 12px;font-weight:650;margin-bottom:15px}.back-link:hover{background:#435d7a}.back-link:focus-visible{outline:3px solid #d7b97d;outline-offset:2px}
 @media(max-width:750px){.wrap{grid-template-columns:1fr}.stage{min-height:250px}}
-.stage iframe{position:absolute;top:0;left:0;width:1920px;height:1080px;border:0;transform-origin:top left;pointer-events:none}
+.stage iframe{position:absolute;top:0;left:0;width:1920px;height:1080px;border:0;transform-origin:top left;transform:scale(.04);pointer-events:none}
 .stage{background:#17212e}
 </style></head><body>
 <a href="/panel.html" class="back-link">← Volver al panel principal</a>
@@ -102,7 +102,7 @@ window.addEventListener('message',event=>{
  }
 });
 $('obsPreview').addEventListener('load',()=>{scalePreview();$('obsPreview').contentWindow.postMessage({type:'plobs-preview-ping'},location.origin);sendPreview('enter')});
-if(typeof ResizeObserver!=='undefined')new ResizeObserver(scalePreview).observe($('previewStage'));
+scalePreview();if(typeof ResizeObserver!=='undefined')new ResizeObserver(scalePreview).observe($('previewStage'));
 window.addEventListener('resize',scalePreview);
 ids.forEach(id=>$(id).addEventListener('input',render));
 $('show').onclick=()=>animate('enter');$('hide').onclick=()=>animate('leave');
