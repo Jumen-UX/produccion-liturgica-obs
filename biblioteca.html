@@ -65,7 +65,7 @@ const NETWORKS=['instagram','facebook','youtube','whatsapp','telegram','tiktok',
 const networkNames={instagram:'Instagram',facebook:'Facebook',youtube:'YouTube',whatsapp:'WhatsApp',telegram:'Telegram',tiktok:'TikTok',website:'Sitio web'};
 function scalePreview(){const stage=$('previewStage');$('obsPreview').style.transform='scale('+(stage.clientWidth/1920)+')'}
 window.addEventListener('message',event=>{if(event.origin===location.origin&&event.source===$('obsPreview').contentWindow&&event.data?.type==='plobs-preview-ready'){previewReady=true;scalePreview();preview('enter')}});
-$('obsPreview').addEventListener('load',()=>{scalePreview();$('obsPreview').contentWindow.postMessage({type:'plobs-preview-ping'},location.origin);preview('enter')});
+$('obsPreview').addEventListener('load',()=>{scalePreview();if(location.origin!=='null')$('obsPreview').contentWindow.postMessage({type:'plobs-preview-ping'},location.origin);preview('enter')});
 scalePreview();if(typeof ResizeObserver!=='undefined')new ResizeObserver(scalePreview).observe($('previewStage'));
 function previewItemData(){const payload={...editing.data};for(const [key] of fields[kind])payload[key]=$('field-'+key)?.value||'';return payload}
 function previewState(){
@@ -111,7 +111,7 @@ input.value=editing.data[key]??style[key]??(key==='network'?'instagram':'');
 if(input.type==='color'&&!input.value)input.value=key==='background'?'#152941':'#D6B678';
 input.oninput=preview;input.onchange=preview;$('fields').append(lab,input)}preview()}
 function preview(phase='update'){
- if(!editing||$('previewStage').hidden||!previewReady)return;
+ if(!editing||$('previewStage').hidden||!previewReady||location.origin==='null')return;
  $('obsPreview').contentWindow.postMessage({type:'plobs-preview',phase:typeof phase==='string'?phase:'update',state:previewState()},location.origin);
 }
 async function uploadSocialLogo(){
