@@ -14,6 +14,7 @@ import threading
 import time
 import uuid
 from pathlib import Path
+from urllib.parse import urlparse
 
 
 class OBSConnectionError(Exception):
@@ -245,6 +246,49 @@ class OBSMonitor:
             if client:
                 client.close()
         return {"state": state, "port": port, "source_configured": source_configured}
+
+    def detect_graphic_sources(self, port=None, password=None):
+        """Localiza fuentes de navegador que muestran nuestro overlay, sin alterar OBS.
+
+        El puerto y la clave opcionales son solo para esta prueba. Ninguno de los
+        datos se guarda hasta que el operador confirme la fuente detectada.
+        """
+        with self.lock:
+            chosen_port = self.config["port"] if port is None else port
+            chosen_password = self.password if password is None else password
+        if type(chosen_port) is not int or not 1024 <= chosen_port <= 65535:
+            raise ValueError("Puerto OBS inválido")
+        if not isinstance(chosen_password, str) or len(chosen_password) > 256:
+            raise ValueError("Contraseña OBS inválida")
+        client = OBSWebSocket(chosen_port, chosen_password)
+        matches = []
+        try:
+            inputs = client.request("GetInputList").get("inputs", [])
+            if not isinstance(inputs, list):
+                raise OBSConnectionError("OBS no devolvió una lista válida de fuentes")
+            for item in inputs[:200]:
+                if not isinstance(item, dict) or not (
+                    item.get("inputKind") == "browser_source" or
+                    item.get("unversionedInputKind") == "browser_source"
+                ):
+                    continue
+                name = item.get("inputName")
+                if not isinstance(name, str) or not name or len(name) > 100:
+                    continue
+                settings = client.request("GetInputSettings", {"inputName": name}).get("inputSettings", {})
+                if not isinstance(settings, dict) or not isinstance(settings.get("url"), str):
+                    continue
+                try:
+                    url = urlparse(settings["url"])
+                    ours = (url.scheme == "http" and url.hostname in ("127.0.0.1", "localhost")
+                            and url.port == 8765 and url.path == "/overlay.html")
+                except ValueError:
+                    ours = False
+                if ours:
+                    matches.append(name)
+        finally:
+            client.close()
+        return {"matches": matches, "port": chosen_port}
 
     def configure(self, values):
         updated = self._validated(values)

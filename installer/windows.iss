@@ -49,8 +49,8 @@ begin
     'Requisito para comprobar qué gráficos están en programa',
     'OBS Studio 28 o posterior ya incluye WebSocket 5.x: no necesita instalar otro complemento.' + #13#10 + #13#10 +
     'Después de instalar, abre OBS y activa el servidor en Herramientas > Ajustes del servidor WebSocket. ' +
-    'En el panel de Producción Litúrgica OBS, configura el puerto (normalmente 4455), ' +
-    'la contraseña y el nombre exacto de la fuente de navegador.' + #13#10 + #13#10 +
+    'En el panel de Producción Litúrgica OBS, pulsa "Detectar OBS y fuente automáticamente". ' +
+    'El puerto 4455 ya viene configurado. Introduce la contraseña de OBS si se solicita.' + #13#10 + #13#10 +
     'El panel comprobará la conexión automáticamente y te indicará cómo resolver errores. ' +
     'La instalación no modifica OBS ni instala componentes de terceros.'
   );

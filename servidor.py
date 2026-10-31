@@ -4,7 +4,8 @@ from pathlib import Path
 from http.cookies import SimpleCookie, CookieError
 from ipaddress import ip_address
 import json, copy, time, uuid, re, threading, os
-from obs_monitor import OBSMonitor, graphic_state
+from obs_monitor import (OBSAuthRejected, OBSAuthRequired, OBSConnectionError,
+                         OBSMonitor, OBSProtocolIncompatible, graphic_state)
 from lan_access import LANAccess, LANRuntime, local_addresses
 
 ROOT=Path(os.environ.get("LITURGIA_APP_DIR",Path(__file__).resolve().parent)).resolve()
@@ -247,11 +248,11 @@ class Handler(SimpleHTTPRequestHandler):
                     return self.respond({"error":"No se pudo abrir el puerto LAN: "+str(exc)},409)
                 return self.respond({"ok":True,"config":LAN_ACCESS.details()})
             except (ValueError,TypeError,KeyError) as exc:return self.respond({"error":str(exc)},400)
-        if path not in ("/api/update","/api/logo","/api/image","/api/logo-video","/api/obs-config"):return self.respond({"error":"Ruta inválida"},404)
+        if path not in ("/api/update","/api/logo","/api/image","/api/logo-video","/api/obs-config","/api/obs-detect"):return self.respond({"error":"Ruta inválida"},404)
         try:
             size=int(self.headers.get("Content-Length","0"))
             if size<1 or size>35*1024*1024:raise ValueError("Tamaño inválido")
-            if path=="/api/obs-config" and size>4096:raise ValueError("Configuración OBS demasiado grande")
+            if path in ("/api/obs-config","/api/obs-detect") and size>4096:raise ValueError("Configuración OBS demasiado grande")
             if self.remote and (path!="/api/update" or size>4096):raise ValueError("Solicitud remota no permitida")
             if self.remote and self.headers.get("Content-Type","").split(";")[0]!="application/json":
                 return self.respond({"error":"Solo se acepta JSON"},415)
@@ -260,6 +261,17 @@ class Handler(SimpleHTTPRequestHandler):
                 if self.headers.get("Content-Type","").split(";")[0]!="application/json":
                     raise ValueError("Solo se acepta JSON para conectar OBS")
                 return self.respond({"ok":True,"config":OBS_MONITOR.configure(json.loads(body))})
+            if path=="/api/obs-detect":
+                if self.headers.get("Content-Type","").split(";")[0]!="application/json":
+                    raise ValueError("Solo se acepta JSON para detectar fuentes OBS")
+                values=json.loads(body)
+                if not isinstance(values,dict) or set(values)-{"port","password"}:
+                    raise ValueError("Solicitud de detección inválida")
+                try:return self.respond(OBS_MONITOR.detect_graphic_sources(**values))
+                except OBSAuthRequired:return self.respond({"code":"password_required","error":"OBS pide una contraseña WebSocket"},409)
+                except OBSAuthRejected:return self.respond({"code":"auth_failed","error":"OBS rechazó la contraseña WebSocket"},409)
+                except OBSProtocolIncompatible:return self.respond({"code":"incompatible","error":"OBS requiere WebSocket 5.x"},409)
+                except (OSError,OBSConnectionError):return self.respond({"code":"unavailable","error":"OBS WebSocket no responde. Comprueba que OBS esté abierto y el servidor habilitado."},409)
             if path!="/api/update":
                 kind=self.headers.get("Content-Type","").split(";")[0]
                 image_types={"image/png":(b"\x89PNG\r\n\x1a\n","png"),"image/jpeg":(b"\xff\xd8\xff","jpg"),"image/webp":(b"RIFF","webp")}

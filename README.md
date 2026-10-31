@@ -49,7 +49,7 @@ Si ejecutas desde código fuente (sin EXE) y quieres generar QR, instala una vez
 ### Comprobación del gráfico en programa de OBS
 
 1. Utilizar preferentemente **OBS Studio 28 o posterior**, que ya incluye **obs-websocket 5.x**. No es necesario instalar un plugin adicional. Dentro de OBS, habilitar **Herramientas → Ajustes del servidor WebSocket**. El puerto usual es `4455`; mantener la autenticación activada.
-2. En el panel web, abrir **Avanzado → Conexión y verificación de OBS**. Escribir el nombre **exacto** de la Fuente de navegador usada para `overlay.html` (por ejemplo, «Navegador 2»), el puerto y la contraseña WebSocket, si OBS la exige. Pulsar «Guardar y verificar OBS».
+2. En la parte superior del panel, abre **1. Conectar OBS** (disponible incluso en el modo Esencial). Pulsa **«Detectar OBS y fuente automáticamente»**: con OBS abierto y WebSocket activado, la aplicación busca la Fuente de navegador que apunte a `http://127.0.0.1:8765/overlay.html` y, si encuentra exactamente una, guarda su nombre automáticamente. Si OBS exige contraseña, introdúcela y repite. El puerto **4455** ya está preconfigurado. En caso de varias fuentes coincidentes o ninguna, utiliza **«Configurar manualmente»**; el programa nunca elige una fuente dudosa.
 3. El Dock y el panel mostrarán **AL AIRE** solamente si el gráfico está publicado, la fuente aparece activa en la salida de programa y OBS confirma una transmisión activa. **EN PROGRAMA** indica que la fuente está en programa sin transmisión activa. **FUERA DE PROGRAMA** significa que la fuente no está activa en programa. **SIN VERIFICAR** indica que falta configuración, conexión o confirmación de OBS.
 4. «Imagen limpia» y «Restaurar» siguen disponibles aunque OBS WebSocket no esté conectado; no se bloquea la operación de los gráficos.
 
@@ -63,12 +63,14 @@ La comprobación de actividad de una fuente no puede detectar si otra capa opaca
 
 El panel y la Fuente de navegador de OBS **siguen siempre en `127.0.0.1:8765`**. El acceso remoto es un segundo servicio, inicialmente desactivado, que al habilitarse escucha en el puerto `8766` (configurable) de la red local. **No uses el puerto 8766 como fuente de navegador de OBS.**
 
-1. En la computadora que ejecuta OBS, abre el **Panel → Avanzado → Acceso remoto por red local**.
-2. Establece una contraseña de **operador** de al menos 12 caracteres; opcionalmente, una diferente de **solo consulta**. Activa el acceso y pulsa «Guardar acceso remoto».
-3. La sección mostrará una o varias direcciones y un **QR**. Selecciona la dirección correspondiente al Wi-Fi/LAN usado por los dispositivos. El QR contiene solo la URL de inicio de sesión, nunca una contraseña.
+1. En la computadora que ejecuta OBS, abre el panel. La tarjeta **«2. Conectar teléfono o tableta»** aparece al principio, incluso en **Esencial**. No hay que ir a Avanzado para encontrar el QR.
+2. Establece una contraseña de **operador** de al menos 12 caracteres, marca **«Permitir control desde la misma red»** y pulsa **«Activar y generar QR»**. El puerto **8766** ya viene configurado. Para un usuario de **solo consulta**, despliega «Opciones adicionales de red y permisos».
+3. La misma tarjeta mostrará una o varias direcciones y un **QR**. Selecciona la dirección correspondiente al Wi-Fi/LAN usado por los dispositivos. Si el servidor no arranca o el QR falla, aparece un mensaje explicativo. El QR contiene solo la URL de inicio de sesión, nunca una contraseña.
 4. En el teléfono o tableta, conéctate a la **misma red privada** y escanea el QR. Introduce la contraseña. El operador puede lanzar, limpiar y restaurar gráficos, controlar la cuenta regresiva, el logo y las redes; el perfil de consulta solo observa.
 5. Los cambios de otros operadores aparecen automáticamente mediante notificaciones locales del servidor; «AL AIRE» sigue dependiendo de la verificación de OBS configurada en el panel principal.
 6. Para expulsar dispositivos, usa «Desconectar dispositivos»; para terminar el acceso, desactiva la casilla y guarda.
+
+**Comprobación importante:** «Servidor LAN activo» y «QR generado» significan que el servicio funciona en la computadora y el código representa una dirección válida. **No prueban** que el teléfono pueda entrar; eso depende también del firewall, la red y el router. La validación se completa al abrir la dirección desde el teléfono, iniciar sesión y observar/ejecutar un gráfico en una prueba con OBS.
 
 **Seguridad y limitaciones:** las contraseñas se guardan como verificadores PBKDF2, no en texto plano, en `acceso_lan.json` dentro de los datos locales. Las sesiones se mantienen en memoria hasta ocho horas o revocación; hay límite de intentos fallidos. El puerto LAN ofrece exclusivamente las páginas de inicio de sesión/control, estado y comandos de operador permitidos. No expone `/panel.html`, `/studio.html`, `/overlay.html`, archivos internos, carga de medios ni configuración OBS. No habilites reenvío de puertos en el router.
 

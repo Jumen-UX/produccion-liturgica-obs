@@ -5,14 +5,16 @@ El acceso remoto permite lanzar los gráficos preparados desde teléfonos y tabl
 ## Preparación en la computadora principal
 
 1. Conecta la computadora que ejecuta OBS a la red que usarán los demás dispositivos. Puede ser Ethernet y Wi-Fi del mismo router; el router debe permitir comunicación entre ellos.
-2. Abre `http://127.0.0.1:8765/panel.html` y selecciona **Avanzado**.
-3. Busca **Acceso remoto por red local**. La función inicia desactivada.
-4. Escribe una contraseña nueva de operador de **12 a 128 caracteres**. Si habrá alguien que solo observará el estado, escribe otra contraseña para **solo consulta**. Evita reutilizar contraseñas personales.
-5. Marca **Habilitar acceso desde otros dispositivos** y guarda. El puerto predeterminado es **8766**; puedes cambiarlo si otro programa lo usa.
-6. En la misma sección, selecciona la dirección que corresponde a tu red. Abre esa dirección en el teléfono o escanea el QR mostrado.
+2. Abre `http://127.0.0.1:8765/panel.html` en la computadora principal. En la parte superior aparece **«2. Conectar teléfono o tableta»** sin necesidad de cambiar al modo Avanzado.
+3. Escribe una contraseña nueva de operador de **12 a 128 caracteres**; evita reutilizar contraseñas personales. En futuras sesiones no tendrás que volver a escribirla para reactivar el servicio.
+4. Marca **«Permitir control desde la misma red»** y pulsa **«Activar y generar QR»**. El puerto predeterminado es **8766**. Para cambiarlo o crear una contraseña diferente de **solo consulta**, abre «Opciones adicionales de red y permisos».
+5. En la misma tarjeta aparecerá **«Tu código QR de acceso»**, la dirección seleccionable y una indicación de si el código se generó. Selecciona la dirección que corresponde a tu red y escanéala con el teléfono.
+6. Comprueba desde el teléfono que la página abre y solicita contraseña. La aparición del QR **no significa que el móvil ya se conectó**; la comunicación final depende de la configuración de la red y del firewall.
 7. Si Windows muestra una advertencia del firewall, permite el acceso **solo para redes privadas** cuando confíes en la red. Si no aparece y el móvil no conecta, configura manualmente una regla de entrada TCP para el puerto LAN elegido, restringida al perfil **Privado** y a la **subred local**. Esta regla puede requerir permisos de administrador.
 
 No se necesitan aplicaciones adicionales en el celular. El QR contiene la dirección de acceso, **no** contiene la clave.
+
+Antes de activar el móvil puedes completar el paso **«1. Conectar OBS»**: con WebSocket 5.x habilitado en OBS Studio 28 o posterior, pulsa **«Detectar OBS y fuente automáticamente»**. El sistema utiliza el puerto 4455 por defecto y configura el nombre de la Fuente de navegador solo si identifica exactamente una fuente apuntando a nuestro `overlay.html`. Si OBS pide contraseña, introdúcela en el panel de la PC. La configuración manual permanece disponible y nunca modifica escenas de OBS.
 
 ## Qué puede hacer cada persona
 
@@ -41,7 +43,7 @@ El panel remoto recibe notificaciones de cambios por eventos del servidor (SSE) 
 - Cada inicio de sesión recibe una cookie `HttpOnly` y `SameSite=Strict`. Las sesiones caducan a las **8 horas**, se invalidan al cambiar la configuración y pueden revocarse manualmente.
 - Tras **5 contraseñas fallidas en 5 minutos** desde un mismo dispositivo, se limita temporalmente el acceso.
 - Usa una red Wi-Fi **privada, protegida y de confianza**. El servicio LAN funciona con HTTP sin cifrado de transporte; no uses Wi-Fi de invitados no confiable ni abras el puerto hacia Internet. El cifrado HTTPS o una VPN es requisito para otros escenarios de red.
-- Si el teléfono se pierde o cambia el operador, entra en Avanzado desde la computadora de OBS, pulsa **Desconectar dispositivos** y cambia la contraseña. Para una medida inmediata, desactiva el acceso remoto y guarda.
+- Si el teléfono se pierde o cambia el operador, usa la tarjeta **«2. Conectar teléfono o tableta»** de la computadora de OBS, pulsa **Desconectar dispositivos** y cambia la contraseña. Para una medida inmediata, desactiva el acceso remoto y guarda.
 - Si el servicio LAN falla, la consola local, el Dock y el overlay continúan independientes en el puerto 8765.
 
 ## Solución de problemas

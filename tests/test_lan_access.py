@@ -107,11 +107,19 @@ class LANAccessTests(unittest.TestCase):
             with self.subTest(path=path):
                 self.assert_denied(404, self.lan_url, path, opener=self.operator)
         self.assert_denied(401, self.lan_url, "/api/state")
+        self.assert_denied(404, self.lan_url, "/api/obs-detect", {"port": 4455}, self.operator)
         self.assert_denied(401, self.lan_url, "/remote.html")
         with self.request(self.lan_url, "/remote.html", opener=self.viewer) as response:
             self.assertEqual(response.status, 200)
         with self.request(self.lan_url, "/login.html") as response:
             self.assertEqual(response.status, 200)
+
+    def test_source_detection_requires_local_admin_and_does_not_change_published_state(self):
+        with patch.object(servidor.OBS_MONITOR, "detect_graphic_sources", return_value={"matches": ["Navegador litúrgico"], "port": 4455}) as detect:
+            result = self.json(self.local_url, "/api/obs-detect", {"port": 4455})
+        self.assertEqual(result["matches"], ["Navegador litúrgico"])
+        detect.assert_called_once_with(port=4455)
+        self.assertEqual(self.json(self.local_url, "/api/state")["title"], servidor.DEFAULT["title"])
 
     def test_viewer_read_only_and_operator_changes_same_live_state(self):
         self.setup_credentials()

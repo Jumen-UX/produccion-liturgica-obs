@@ -107,6 +107,48 @@ class OBSMonitorTests(unittest.TestCase):
                 self.assertNotIn("password", result)
                 self.assertNotIn("OBS not running", str(result))
 
+    def test_detects_only_our_browser_source_without_changing_configuration(self):
+        with tempfile.TemporaryDirectory() as directory:
+            monitor = OBSMonitor(Path(directory) / "conexion_obs.json", start_worker=False)
+            client = MagicMock()
+
+            def respond(command, data=None):
+                if command == "GetInputList":
+                    return {"inputs": [
+                        {"inputName": "Logo", "inputKind": "image_source"},
+                        {"inputName": "Gráficos", "inputKind": "browser_source"},
+                        {"inputName": "Noticias", "inputKind": "browser_source"},
+                    ]}
+                if data["inputName"] == "Gráficos":
+                    return {"inputSettings": {"url": "http://127.0.0.1:8765/overlay.html"}}
+                return {"inputSettings": {"url": "https://example.org"}}
+
+            client.request.side_effect = respond
+            with patch("obs_monitor.OBSWebSocket", return_value=client) as websocket:
+                result = monitor.detect_graphic_sources(4455, "clave temporal")
+            self.assertEqual(result, {"matches": ["Gráficos"], "port": 4455})
+            self.assertFalse(monitor.configuration()["has_password"])
+            self.assertEqual(monitor.configuration()["source_name"], "")
+            websocket.assert_called_once_with(4455, "clave temporal")
+            self.assertEqual([call.args[0] for call in client.request.call_args_list],
+                             ["GetInputList", "GetInputSettings", "GetInputSettings"])
+            client.close.assert_called_once()
+
+    def test_detection_does_not_guess_when_two_browser_sources_match(self):
+        with tempfile.TemporaryDirectory() as directory:
+            monitor = OBSMonitor(Path(directory) / "conexion_obs.json", start_worker=False)
+            client = MagicMock()
+            client.request.side_effect = lambda command, data=None: (
+                {"inputs": [{"inputName": "A", "inputKind": "browser_source"},
+                            {"inputName": "B", "inputKind": "browser_source"}]}
+                if command == "GetInputList" else
+                {"inputSettings": {"url": "http://localhost:8765/overlay.html?test=1"}}
+            )
+            with patch("obs_monitor.OBSWebSocket", return_value=client):
+                result = monitor.detect_graphic_sources()
+            self.assertEqual(result["matches"], ["A", "B"])
+            self.assertFalse(monitor.configuration()["source_name"])
+
     def test_graphic_status_never_claims_air_without_obs_confirmation(self):
         graphic = {"visible": True, "mode": "lectura"}
         status = {"configured": True, "connected": True, "source_active": True, "streaming": True}
