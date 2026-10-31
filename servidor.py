@@ -322,12 +322,12 @@ class Handler(SimpleHTTPRequestHandler):
                     item=PRODUCTIONS.get_item(data.get("production_id"),data.get("item_id"))
                     kind=item["type"];payload=item["data"]
                     if kind=="lower_third":
-                        live["lower_third"]=validated_lower_third({**LOWER_DEFAULT,**payload})
+                        live["lower_third"]=validated_lower_third({**draft["lower_third"],**payload})
                         live.update(mode="lower_third",visible=True)
                     elif kind in ("titulo","lectura","salmo","aviso","frase"):
                         live.update(mode={"titulo":"cintillo","lectura":"lectura","salmo":"salmo","aviso":"avisos","frase":"cintillo"}[kind],
-                                    title=str(payload.get("title",payload.get("text",item["name"])))[:180],
-                                    detail=str(payload.get("body",""))[:500],visible=True)
+                                    title=str(payload.get("title") or payload.get("text") or item["name"])[:180],
+                                    detail=str(payload.get("body",""))[:500],reference="",subtitle="",visible=True)
                     else:
                         raise ValueError("Este tipo aún no dispone de lanzamiento individual")
                     live["library_item"]={"production_id":data.get("production_id"),"item_id":item["id"]}
