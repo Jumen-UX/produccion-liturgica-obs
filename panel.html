@@ -15,6 +15,49 @@
 .setup-details{border-top:1px solid #e2e7ee;margin-top:12px;padding-top:12px}.setup-details summary{cursor:pointer;color:#204e75;font-weight:650}.setup-details summary:focus-visible{outline:3px solid #c9a66b;outline-offset:3px}.setup-details p{margin-bottom:0}
 @media(max-width:960px){body{padding-bottom:110px}.emergency-mobile{display:grid;grid-template-columns:1fr 1fr;gap:7px;position:fixed;left:0;right:0;bottom:0;z-index:100;padding:10px 12px calc(10px + env(safe-area-inset-bottom));background:#0d233f;box-shadow:0 -3px 20px #0a1b2f44}.emergency-mobile span{grid-column:1/-1;color:#fff;font-size:12px;font-weight:700;text-align:center}.emergency-mobile button{min-height:43px;padding:9px 10px}}
  .settings-fold{margin-bottom:16px;border:1px solid #d5dfe9;border-radius:12px;background:#fff}.settings-fold>summary{padding:15px 18px;cursor:pointer;font-weight:700;color:#193c60}.settings-fold>summary:focus-visible{outline:3px solid #c9a66b;outline-offset:2px}.settings-fold>.card{margin:0;border:0;box-shadow:none}.settings-fold[open]>summary{border-bottom:1px solid #e2e7ee}
+
+/* Size to the browser viewport inside OBS, not the desktop resolution. */
+.wrap>*,.grid>*,.roles>*,.role-entry>*,header>*,.row>*{min-width:0}
+input,textarea,select,button,.studio-link{min-width:0;max-width:100%}
+button,.studio-link{white-space:normal;overflow-wrap:anywhere}
+p,h1,h2,h3,summary,.notice,.obs-readout,.sub,code,a{overflow-wrap:anywhere}
+header,.row,.slide-row .head{flex-wrap:wrap}
+.grid,.roles{grid-template-columns:repeat(2,minmax(0,1fr))}
+.role-entry{grid-template-columns:minmax(0,1fr) auto}
+@media(max-width:960px){
+  .wrap{grid-template-columns:minmax(0,1fr)}
+}
+@media(max-width:500px){
+  .wrap{padding:8px;gap:10px}
+  .card,.ux-switch{padding:12px}
+  .grid,.roles{grid-template-columns:minmax(0,1fr)}
+  .row{align-items:flex-start}
+  .actions>button{flex:1 1 140px;min-height:42px}
+  .studio-link{display:block}
+  .ux-tabs button{flex:1 1 90px}
+  .settings-fold>summary{padding:12px}
+}
+@media(max-width:320px){
+  header{padding:12px}
+  h1{font-size:19px}
+  .theme-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .role-entry{grid-template-columns:minmax(0,1fr)}
+  .emergency-mobile{padding:6px;gap:5px}
+  .emergency-mobile button{padding:7px 5px;font-size:12px}
+}
+@media(max-height:420px) and (max-width:960px){
+  .emergency-mobile{position:static}
+  body{padding-bottom:0}
+}
+
+@media(max-width:960px){
+ .sticky{display:contents}
+ #outputMonitor{order:-1;margin-bottom:0}
+ .sticky>.card:not(#outputMonitor){order:2}
+ #outputMonitor .preview{max-height:200px}
+}
+.monitor-preview summary{cursor:pointer;color:#193c60;font-weight:650;padding:10px 0}.monitor-preview summary:focus-visible{outline:3px solid #c9a66b;outline-offset:2px}
+@media(max-width:960px){#outputMonitor>.actions{display:none}}
 </style></head><body>
 <header><div><small>IDENTIDAD DE TU COMUNIDAD</small><h1>Consola litúrgica · OBS</h1></div><div id="conn">● Conectando</div></header>
 <div class="emergency-mobile" role="region" aria-label="Controles críticos de salida"><span id="mobileLiveState" aria-live="polite">Consultando salida gráfica…</span><button type="button" class="red" id="mobileClean">■ Imagen limpia</button><button type="button" class="secondary" id="mobileRestore">↶ Restaurar</button></div>
@@ -81,7 +124,7 @@
 <label for="obs_password">Contraseña de WebSocket de OBS</label><input id="obs_password" type="password" autocomplete="new-password" placeholder="Solo si OBS solicita contraseña"><p class="muted">La clave se usa únicamente durante esta ejecución y no se guarda en archivos.</p>
 <div class="actions"><button type="button" class="green" id="obsDetect">Detectar OBS y fuente automáticamente</button></div><p class="muted">Buscaremos la fuente de navegador que usa <code>127.0.0.1:8765/overlay.html</code>. No se crearán escenas ni se modificará la transmisión.</p>
 <details class="setup-details" id="obsManual"><summary>Configurar manualmente si no se encuentra la fuente</summary><div class="grid"><div><label for="obs_port">Puerto WebSocket</label><input id="obs_port" type="number" min="1024" max="65535" value="4455"></div><div><label for="obs_source_name">Nombre exacto de la fuente de navegador</label><input id="obs_source_name" maxlength="100" placeholder="Ej. Navegador 2"></div></div><div class="actions"><button type="button" class="secondary" id="obsConnect">Guardar y verificar OBS</button></div><p>Si falta la fuente: en OBS añade una Fuente de navegador con URL <code>http://127.0.0.1:8765/overlay.html</code> y tamaño 1920 × 1080.</p></details><p class="notice" id="obsMessage" role="status" aria-live="polite"></p></section>
-</div><aside class="sticky"><section class="card"><div class="row"><h2>Salida gráfica — OBS</h2><span class="pill unknown" id="liveState">SIN VERIFICAR</span></div><div class="obs-readout" id="onAirGraphic" aria-live="polite">Consultando gráfico…</div><div class="obs-explanation" id="obsExplanation">La conexión con OBS confirmará si el gráfico está en programa.</div><button type="button" class="ux-link" data-scroll-target="obsSettings">Conectar OBS</button><iframe src="/overlay.html" class="preview" title="Vista de la fuente gráfica"></iframe><p class="muted">Esta vista muestra el gráfico publicado; el indicador superior comprueba además si su fuente está en la salida de programa de OBS.</p><div class="actions"><button class="red" id="clean">■ IMAGEN LIMPIA</button><button class="secondary" id="restore">↶ Restaurar</button></div><p class="muted">Usa «Imagen limpia» en los momentos centrales de la plegaria eucarística. No se muestran avisos en esos momentos.</p></section><section class="card"><h2>Vista previa de lo preparado</h2><div class="empty"><div class="section-title" id="draftMode">Preparación</div><h3 id="draftTitle">Santa Misa</h3><div id="draftSubtitle" class="sub"></div><div id="draftReference" class="sub"></div><div id="draftPerson" style="font-weight:700;margin-top:8px"></div></div><p class="muted">Puedes comprobar aquí los datos antes de publicarlos.</p></section><section class="card"><details><summary>Guía del operador</summary><p><strong>1.</strong> Introduce celebrante, diácono, lectores y monitores.</p><p><strong>2.</strong> Guarda los cambios y prepara la escena o persona que quieras mostrar.</p><p><strong>3.</strong> Pulsa «Mostrar en OBS» o «Publicar identificación».</p><p><strong>4.</strong> Durante la consagración, activa «Imagen limpia».</p><p><strong>5.</strong> Al finalizar, prepara y publica los avisos o cierre.</p><p class="muted">El panel solo es accesible desde el equipo local por defecto. Mantén activa la aplicación durante la transmisión.</p></details></section></aside></main>
+</div><aside class="sticky"><section class="card" id="outputMonitor"><div class="row"><h2>Salida gráfica — OBS</h2><span class="pill unknown" id="liveState">SIN VERIFICAR</span></div><div class="obs-readout" id="onAirGraphic" aria-live="polite">Consultando gráfico…</div><div class="obs-explanation" id="obsExplanation">La conexión con OBS confirmará si el gráfico está en programa.</div><button type="button" class="ux-link" data-scroll-target="obsSettings">Conectar OBS</button><details class="monitor-preview"><summary>Ver vista de salida</summary><iframe src="/overlay.html" class="preview" title="Vista de la fuente gráfica"></iframe><p class="muted">Esta vista muestra el gráfico publicado; el indicador superior comprueba además si su fuente está en la salida de programa de OBS.</p></details><div class="actions"><button class="red" id="clean">■ IMAGEN LIMPIA</button><button class="secondary" id="restore">↶ Restaurar</button></div><p class="muted">Usa «Imagen limpia» en los momentos centrales de la plegaria eucarística. No se muestran avisos en esos momentos.</p></section><section class="card"><h2>Vista previa de lo preparado</h2><div class="empty"><div class="section-title" id="draftMode">Preparación</div><h3 id="draftTitle">Santa Misa</h3><div id="draftSubtitle" class="sub"></div><div id="draftReference" class="sub"></div><div id="draftPerson" style="font-weight:700;margin-top:8px"></div></div><p class="muted">Puedes comprobar aquí los datos antes de publicarlos.</p></section><section class="card"><details><summary>Guía del operador</summary><p><strong>1.</strong> Introduce celebrante, diácono, lectores y monitores.</p><p><strong>2.</strong> Guarda los cambios y prepara la escena o persona que quieras mostrar.</p><p><strong>3.</strong> Pulsa «Mostrar en OBS» o «Publicar identificación».</p><p><strong>4.</strong> Durante la consagración, activa «Imagen limpia».</p><p><strong>5.</strong> Al finalizar, prepara y publica los avisos o cierre.</p><p class="muted">El panel solo es accesible desde el equipo local por defecto. Mantén activa la aplicación durante la transmisión.</p></details></section></aside></main>
 <script>
 /* Ajustes accesibles en todos los niveles, sin ocupar el espacio de operación. */
 const workspaceTools=document.querySelector('.wrap > div');
@@ -95,6 +138,7 @@ const connectionSettings=foldSettings('connectionSettings','Conexiones · OBS y 
 workspaceTools.querySelector('.ux-switch').after(connectionSettings);
 const identityCard=document.getElementById('parish_name').closest('section');
 foldSettings('identitySettings','Identidad de la comunidad',[identityCard]);
+foldSettings('participantSettingsFold','Participantes · nombres y ministerios',[document.getElementById('participantsSettings')]);
 document.querySelectorAll('[data-scroll-target="obsSettings"]').forEach(button=>{
   button.removeAttribute('data-set-level');
   button.addEventListener('click',()=>{
@@ -153,7 +197,7 @@ const templates={lectura:['Primera lectura','', ''],salmo:['Salmo responsorial',
 $('theme').onchange=()=>{const selected=THEMES[$('theme').value];$('themeName').value=selected.label;showColors(selected.colors);preview()};COLOR_KEYS.forEach(k=>$('color_'+k).addEventListener('input',()=>{showColors(getColors());preview()}));$('restoreTheme').onclick=()=>{showColors(THEMES[$('theme').value].colors);msg('Paleta restaurada en preparación. Aún no se ha publicado.')};$('saveTheme').onclick=async()=>{try{await save()}catch(e){msg(e.message,true)}};$('publishTheme').onclick=async()=>{try{await publish()}catch(e){msg(e.message,true)}};setupThemes();
 $('mode').addEventListener('change',configureFields);
 $('applySuggestion').onclick=()=>{const example=templates[$('mode').value];if(!example)return;[$('title').value,$('reference').value,$('detail').value]=example;$('subtitle').value='';configureFields();msg('Texto sugerido aplicado. Puedes editarlo antes de guardarlo.')};
-$('goParticipants').onclick=()=>$('participantsSettings').scrollIntoView({behavior:'smooth',block:'start'});
+$('goParticipants').onclick=()=>{$('participantSettingsFold').open=true;$('participantsSettings').scrollIntoView({behavior:'smooth',block:'start'})};
 $('saveDraft').onclick=async()=>{try{await save()}catch(e){msg(e.message,true)}};$('publish').onclick=async()=>{try{await publish()}catch(e){msg(e.message,true)}};$('saveParticipants').onclick=$('saveDraft').onclick;$('publishParticipant').onclick=async()=>{try{await publishPerson()}catch(e){msg(e.message,true)}};
 $('addL').onclick=()=>{if(roleList.lectores.length<12){roleList.lectores.push('');roleInputs('lectores');choices()}};$('addM').onclick=()=>{if(roleList.monitores.length<12){roleList.monitores.push('');roleInputs('monitores');choices()}};
 $('role').onchange=()=>{choices();preview()};$('role_index').onchange=preview;
