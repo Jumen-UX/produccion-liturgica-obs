@@ -47,23 +47,49 @@ summary:focus-visible{outline:3px solid #d6b678;outline-offset:3px}
 details[open]>summary{margin-bottom:12px}
 @media(max-height:600px){.live-controls{position:static}}
 #feedback:empty{min-height:0;margin:0}
+
+/* Wide docks use distinct work areas instead of stretching a mobile column. */
+body{max-width:1320px;margin-inline:auto}
+.dock-layout>*{min-width:0}
+@media(min-width:760px){
+ body{padding:20px}
+ .dock-layout{display:grid;grid-template-columns:minmax(260px,.9fr) minmax(0,1.6fr);gap:14px;align-items:start;
+ grid-template-areas:"live launch" "timer launch" "aux launch" "links links"}
+ .live-controls{grid-area:live;position:static;padding:0}
+ .launch-section{grid-area:launch}
+ .timer-section{grid-area:timer}
+ .aux-section{grid-area:aux}
+ .links{grid-area:links;justify-content:flex-end}
+ .links a{flex:0 1 200px}
+ .dock-layout>section{margin:0}
+}
+@media(min-width:1100px){
+ .launch-section{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+ .launch-section>h2,.launch-section>.hint{grid-column:1/-1}
+ .launch-section>h2{margin-bottom:0}
+ .graphic,.graphic:first-of-type{display:flex;flex-direction:column;align-items:stretch;justify-content:space-between;gap:16px;
+ padding:14px;border:1px solid #3c4b5d;border-radius:8px;min-height:142px}
+ .graphic.active{border:1px solid #2eba88;padding:14px}
+ .graphic>button{align-self:flex-start;min-width:100px}
+}
 </style></head><body>
 <header><h1>Producción Litúrgica · Control gráfico</h1><span class="status" id="status">Conectando…</span></header>
-<div class="live-controls"><div class="air-box" role="status" aria-live="polite"><div class="head"><strong>Estado del gráfico en OBS</strong><span class="air-badge unknown" id="airBadge">SIN VERIFICAR</span></div><div id="airGraphic" style="margin-top:8px;font-size:13px;font-weight:700">Consultando…</div><small id="airDetail">La conexión con OBS permite confirmar qué aparece en programa.</small></div>
+<main class="dock-layout"><div class="live-controls"><div class="air-box" role="status" aria-live="polite"><div class="head"><strong>Estado del gráfico en OBS</strong><span class="air-badge unknown" id="airBadge">SIN VERIFICAR</span></div><div id="airGraphic" style="margin-top:8px;font-size:13px;font-weight:700">Consultando…</div><small id="airDetail">La conexión con OBS permite confirmar qué aparece en programa.</small></div>
 <section class="output-controls"><details><summary>Detalle de la salida gráfica</summary><div class="live" id="liveSummary">Consultando…</div></details>
 <div class="buttons"><button id="clean" class="danger">Imagen limpia</button><button id="restore" class="secondary">Restaurar gráfico</button></div></section><div id="feedback" role="status" aria-live="polite"></div></div>
-<section><h2>Lanzar gráficos preparados</h2>
+<section class="launch-section"><h2>Lanzar gráficos preparados</h2>
 <div class="graphic" id="graphicPrepared"><div><strong>Gráfico del panel <span class="graphic-state" id="statePrepared"></span></strong><small id="preparedSummary">Cargando preparación…</small></div><button id="launchPrepared">Lanzar</button></div>
 <div class="graphic" id="graphicLower"><div><strong>Lower Third <span class="graphic-state" id="stateLower"></span></strong><small id="lowerSummary">Cargando estilo…</small></div><button id="launchLower" class="secondary">Lanzar</button></div>
 <div class="graphic" id="graphicPerson"><div><strong>Identificación de participante <span class="graphic-state" id="statePerson"></span></strong><small id="personSummary">Cargando participantes…</small></div><button id="launchPerson" class="secondary">Lanzar</button></div>
 <div class="graphic" id="graphicWait"><div><strong>Pantalla de espera <span class="graphic-state" id="stateWait"></span></strong><small id="waitSummary">Cuenta regresiva y avisos preparados en el panel</small></div><button id="launchWait" class="secondary">Lanzar</button></div>
 <p class="hint">El Dock lanza gráficos y verifica su estado en OBS; no modifica la configuración. Los nombres, diseños y textos se editan en el panel web o en el Estudio.</p></section>
-<section><h2>Cuenta regresiva</h2><div class="timer" id="timer">15:00</div>
+<section class="timer-section"><h2>Cuenta regresiva</h2><div class="timer" id="timer">15:00</div>
 <div class="buttons"><button id="timerStart">Iniciar</button><button id="timerPause" class="secondary">Pausar</button><button id="timerReset" class="secondary">Reiniciar</button></div></section>
-<section><details><summary>Logo y redes sociales</summary>
+<section class="aux-section"><details><summary>Logo y redes sociales</summary>
 <div class="buttons"><button id="logo" class="secondary">Mostrar/quitar logo</button><button id="social" class="secondary">Mostrar redes</button></div>
 <button id="hideSocial" class="secondary" style="margin-top:7px;width:100%">Ocultar redes</button></details></section>
 <div class="links"><a href="/panel.html" target="_blank" rel="noopener">Abrir panel web</a><a href="/studio.html" target="_blank" rel="noopener">Abrir Estudio</a></div>
+</main>
 <script>
 'use strict';
 const $=id=>document.getElementById(id),modeNames={espera:'Espera y cuenta regresiva',cintillo:'Cintillo general',lectura:'Lectura',salmo:'Salmo responsorial',evangelio:'Evangelio',homilia:'Homilía',ofertorio:'Ofertorio',comunion:'Comunión',avisos:'Avisos',cierre:'Cierre',incidencia:'Aviso técnico',participante:'Participante',lower_third:'Lower Third personalizado',limpio:'Imagen limpia'};
