@@ -15,6 +15,12 @@ Sistema local y configurable de gráficos para transmisiones de celebraciones li
 - Indicador de gráfico **AL AIRE**, **EN PROGRAMA**, **FUERA DE PROGRAMA** o **SIN VERIFICAR**, consultando OBS WebSocket en el equipo local.
 - Acceso remoto LAN opcional, mediante QR, con contraseñas de operador/consulta, sesiones revocables y actualización del estado sin recargar la página.
 
+## Inicio directo en Windows
+
+Al ejecutar `ProduccionLiturgicaOBS.exe`, el servidor arranca en segundo plano y se abre automáticamente `http://127.0.0.1:8765/panel.html` en el navegador predeterminado. **No aparece una ventana de bienvenida separada** cuando la bandeja de sistema funciona. El icono de Producción Litúrgica OBS, junto al reloj de Windows (puede estar dentro de los iconos ocultos), permite **Abrir panel web** o **Cerrar sistema** con confirmación. Cerrar la pestaña del navegador no detiene el servidor ni la salida de OBS.
+
+Si se ejecuta de nuevo el EXE, se abre el panel de la instancia existente sin iniciar otro servidor. Si otro proceso ocupa el puerto, se muestra un error y no se abre una página ajena. Si Windows no puede mostrar el icono de bandeja por falta de dependencias, aparece un control mínimo de respaldo para abrir el panel y cerrar el servidor de forma segura. Configuración de OBS y red LAN siguen dentro del panel.
+
 ## Descargas de Windows (al publicar una versión)
 
 - Instalador: `ProduccionLiturgicaOBS-Setup.exe`, instalación por usuario, accesos directos y desinstalación.
