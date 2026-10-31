@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Biblioteca de producciones · OBS</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#edf1f6;font:15px 'Segoe UI',sans-serif;color:#17283d}
+header{background:#0d233f;color:#fff;padding:17px 4%;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+header h1{font-size:23px;margin:0}a{color:inherit}header a{color:#f4db9d}
+main{max-width:1350px;margin:auto;padding:20px;display:grid;grid-template-columns:265px minmax(0,1fr);gap:17px}
+.card{background:white;border:1px solid #dae3ec;border-radius:13px;padding:16px;margin-bottom:12px}
+h2{font-size:17px;margin:0 0 12px}h3{font-size:15px;margin:0}
+button,select,input,textarea{font:inherit;border-radius:8px;min-height:40px}
+input,select,textarea{padding:9px;border:1px solid #b8c6d4;width:100%;background:#fff;color:#152b45}
+button{border:0;background:#193c60;color:white;font-weight:600;padding:9px 13px;cursor:pointer}
+button.secondary{background:#e9eef4;color:#193c60}
+button.danger{background:#fbe5e5;color:#8d2525}
+button:disabled{opacity:.5;cursor:not-allowed}
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid #e1c16c;outline-offset:2px}
+.actions{display:flex;gap:7px;flex-wrap:wrap;align-items:center}
+label{font-size:13px;font-weight:650;display:block;margin:12px 0 5px}
+.category{display:flex;justify-content:space-between;align-items:center;width:100%;text-align:left;margin:5px 0;background:#edf1f6;color:#193c60}
+.category.selected{background:#193c60;color:white}
+.muted{color:#5f7185;font-size:13px;line-height:1.45}.row{display:flex;align-items:center;gap:10px;justify-content:space-between;flex-wrap:wrap}
+.graphic{display:flex;align-items:center;gap:12px;border:1px solid #dae3ec;border-radius:10px;padding:12px;margin:8px 0;background:#fff}
+.graphic.active{border-color:#318568;background:#f1faf6}.graphic>div{flex:1;min-width:180px}
+.graphic small{display:block;color:#65768a;margin-top:4px}.graphic .actions button{padding:7px 10px;min-height:35px}
+#editor{background:#f7f9fb;border-radius:12px;padding:14px}#editor[hidden]{display:none}
+#note{min-height:20px;color:#246b50}#note.error{color:#9a2e2e}
+.preview{background:#102036;color:white;padding:18px;border-radius:10px;min-height:90px;margin:12px 0}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media(max-width:850px){main{grid-template-columns:1fr;padding:10px}.graphic{align-items:flex-start;flex-wrap:wrap}.graphic .actions{width:100%}.grid{grid-template-columns:1fr}}
+</style></head><body>
+<header><div><h1>Biblioteca de producciones</h1><span style="color:#e2c990;font-size:13px">Prepara varios gráficos por categoría · lanza solo cuando lo decidas</span></div><nav><a href="/panel.html">Volver al panel principal</a> · <a href="/studio.html">Estudio de diseño</a> · <a href="/dock.html">Dock OBS</a></nav></header>
+<main><aside><section class="card"><h2>Producción activa</h2><label for="production">Elegir producción</label><select id="production"></select><div class="actions" style="margin-top:10px"><button id="addProduction">+ Nueva producción</button></div><p class="muted">Los datos quedan guardados en esta computadora. Los ejemplos pueden modificarse o eliminarse.</p></section><section class="card"><h2>Categorías</h2><div id="categories"></div></section></aside>
+<section><div class="card"><div class="row"><div><h2 id="heading">Gráficos</h2><p class="muted">Cada fila es un elemento independiente. Puedes duplicarlo o cambiar el orden.</p></div><button id="addItem">+ Agregar elemento</button></div><p id="note" role="status" aria-live="polite"></p><div id="items"></div>
+<div id="editor" hidden><h3 id="editorTitle">Editar gráfico</h3><label for="itemName">Nombre identificador (solo para organizar)</label><input id="itemName" maxlength="110">
+<div id="fields"></div><label><input id="itemEnabled" type="checkbox" style="width:auto;min-height:0"> Habilitado</label><div class="preview" id="preview" aria-live="polite"></div><div class="actions"><button id="saveItem">Guardar elemento</button><button id="cancelItem" class="secondary">Cancelar</button></div></div></div></section></main>
+<script>
+const $=id=>document.getElementById(id);
+const labels={lower_third:'Lower Thirds',titulo:'Títulos',lectura:'Lecturas',salmo:'Salmos',aviso:'Avisos',red_social:'Redes sociales',frase:'Frases',logo:'Logos',qr:'Códigos QR',pantalla:'Pantallas',temporizador:'Temporizadores',credito:'Créditos',patrocinador:'Patrocinadores',imagen:'Imágenes',video:'Videos'};
+const fields={lower_third:[['name','Nombre mostrado'],['role','Cargo'],['subtitle','Subtítulo']],titulo:[['title','Título'],['body','Detalle']],lectura:[['title','Lectura'],['body','Referencia']],salmo:[['title','Título'],['body','Referencia']],aviso:[['title','Aviso'],['body','Mensaje']],red_social:[['network','Red'],['handle','Usuario o enlace'],['phrase','Frase'],['logo','Ruta del logo (pendiente de selector)']],frase:[['text','Frase']],logo:[['name','Nombre']],qr:[['title','Texto'],['url','Enlace']],pantalla:[['title','Título'],['body','Texto']],temporizador:[['minutes','Minutos']],credito:[['title','Nombre'],['body','Descripción']],patrocinador:[['title','Patrocinador']],imagen:[['title','Descripción']],video:[['title','Descripción']]};
+const launchable=new Set(['lower_third','titulo','lectura','salmo','aviso','frase']);
+let state=null,kind='lower_third',editing=null;
+async function request(path,body){const response=await fetch(path,{method:body?'POST':'GET',cache:'no-store',headers:body?{'Content-Type':'application/json'}:{},body:body?JSON.stringify(body):undefined});const data=await response.json();if(!response.ok)throw Error(data.error||'Error del servidor');return data}
+function notice(text,error=false){$('note').textContent=text;$('note').className=error?'error':''}
+function active(){return state.productions.find(p=>p.id===state.active_id)}
+async function reload(){state=await request('/api/productions');render()}
+async function mutate(payload){try{state=await request('/api/productions',payload);render();notice('Cambios guardados correctamente.')}catch(e){notice(e.message,true)}}
+function button(text,fn,klass='secondary'){const el=document.createElement('button');el.type='button';el.className=klass;el.textContent=text;el.onclick=fn;return el}
+function render(){const selected=active();$('production').replaceChildren(...state.productions.map(p=>{const o=document.createElement('option');o.value=p.id;o.textContent=p.name;return o}));$('production').value=state.active_id;
+$('categories').replaceChildren(...Object.entries(labels).map(([key,label])=>{const count=selected.items.filter(i=>i.type===key).length;const b=button(label+' · '+count,()=>{kind=key;editing=null;render()},'category'+(kind===key?' selected':''));return b}));
+$('heading').textContent=labels[kind];const list=selected.items.filter(i=>i.type===kind);$('items').replaceChildren();
+if(!list.length){const p=document.createElement('p');p.className='muted';p.textContent='Todavía no hay elementos de este tipo. Usa «Agregar elemento».';$('items').append(p)}
+for(const item of list){const line=document.createElement('div');line.className='graphic';const info=document.createElement('div');const title=document.createElement('strong');title.textContent=item.name;const detail=document.createElement('small');detail.textContent=(item.enabled?'Preparado':'Desactivado')+' · '+Object.values(item.data).filter(v=>typeof v==='string').slice(0,2).join(' · ').slice(0,120);info.append(title,detail);
+const controls=document.createElement('span');controls.className='actions';
+if(launchable.has(kind))controls.append(button('▶ Lanzar',()=>launch(item),''));
+controls.append(button('Editar',()=>edit(item)),button('Duplicar',()=>mutate({action:'duplicate',item_id:item.id})),button('↑',()=>move(item,-1)),button('↓',()=>move(item,1)),button('Eliminar',()=>{if(confirm('¿Eliminar «'+item.name+'»?'))mutate({action:'delete',item_id:item.id})},'danger'));line.append(info,controls);$('items').append(line)}
+$('editor').hidden=editing===null;if(editing!==null)fillEditor()}
+function move(item,d){const all=active().items;const pos=all.findIndex(i=>i.id===item.id),target=pos+d;if(target<0||target>=all.length||all[target].type!==item.type)return notice('Solo puedes reordenar dentro de la misma categoría.',true);mutate({action:'move',item_id:item.id,index:target})}
+function edit(item){editing=item?structuredClone(item):{id:null,type:kind,name:'',enabled:true,data:{}};render();$('itemName').focus()}
+function fillEditor(){$('editorTitle').textContent=editing.id?'Editar elemento':'Nuevo elemento';$('itemName').value=editing.name;$('itemEnabled').checked=editing.enabled;$('fields').replaceChildren();
+for(const [key,label] of fields[kind]){const lab=document.createElement('label');lab.textContent=label;lab.htmlFor='field-'+key;const input=document.createElement('input');input.id='field-'+key;input.maxLength=300;input.value=editing.data[key]??'';input.oninput=preview;$('fields').append(lab,input)}preview()}
+function preview(){const values=fields[kind].map(([k])=>$('field-'+k)?.value).filter(Boolean);$('preview').textContent=values.join(' · ')||'Vista del contenido pendiente de completar. La apariencia final se configura en Estudio.'}
+async function launch(item){try{const result=await request('/api/update',{command:'library_launch',production_id:state.active_id,item_id:item.id});notice('Gráfico enviado a la salida local. Comprueba el estado «AL AIRE» en el Dock o panel.');}catch(e){notice(e.message,true)}}
+$('production').onchange=()=>mutate({action:'select_production',production_id:$('production').value});
+$('addProduction').onclick=()=>{const name=prompt('Nombre de la nueva producción:');if(name?.trim())mutate({action:'create_production',name:name.trim()})};
+$('addItem').onclick=()=>edit(null);
+$('cancelItem').onclick=()=>{editing=null;render()};
+$('saveItem').onclick=()=>{const data={...editing.data};for(const [k] of fields[kind])data[k]=$('field-'+k).value;const item={type:kind,name:$('itemName').value,enabled:$('itemEnabled').checked,data};const requestData={action:editing.id?'update':'add',item,item_id:editing.id};editing=null;mutate(requestData)};
+reload().catch(e=>notice(e.message,true));
+</script></body></html>
