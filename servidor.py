@@ -316,6 +316,18 @@ class Handler(SimpleHTTPRequestHandler):
                     if mode=="espera" and draft["mode"]!="espera":raise ValueError("Prepara primero la pantalla de espera en el panel")
                     for k in EDIT:live[k]=copy.deepcopy(draft[k])
                     live.update(mode=mode,visible=True)
+                elif cmd=="library_launch":
+                    item=PRODUCTIONS.get_item(data.get("production_id"),data.get("item_id"))
+                    kind=item["type"];payload=item["data"]
+                    if kind=="lower_third":
+                        live["lower_third"]=validated_lower_third({**LOWER_DEFAULT,**payload})
+                        live.update(mode="lower_third",visible=True)
+                    elif kind in ("titulo","lectura","salmo","aviso","frase"):
+                        live.update(mode={"titulo":"cintillo","lectura":"lectura","salmo":"salmo","aviso":"avisos","frase":"cintillo"}[kind],
+                                    title=str(payload.get("title",payload.get("text",item["name"])))[:180],
+                                    detail=str(payload.get("body",""))[:500],visible=True)
+                    else:
+                        raise ValueError("Este tipo aún no dispone de lanzamiento individual")
                 elif cmd=="social_show":live["social_now"]=True
                 elif cmd=="social_hide":live["social_now"]=False
                 elif cmd=="logo_toggle":live["logo_persistent"]=not live.get("logo_persistent",True)
