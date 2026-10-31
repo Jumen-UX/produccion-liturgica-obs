@@ -8,12 +8,14 @@ import struct
 import tempfile
 import threading
 import unittest
+from unittest.mock import MagicMock, patch
 from pathlib import Path
 
 import sys
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from obs_monitor import OBSMonitor, OBSWebSocket, graphic_state
+from obs_monitor import (OBSAuthRejected, OBSAuthRequired, OBSMonitor,
+                         OBSProtocolIncompatible, OBSWebSocket, graphic_state)
 
 
 class FakeOBS(socketserver.BaseRequestHandler):
@@ -78,6 +80,33 @@ class FakeOBS(socketserver.BaseRequestHandler):
 
 
 class OBSMonitorTests(unittest.TestCase):
+    def test_websocket_diagnostic_works_before_source_configuration(self):
+        with tempfile.TemporaryDirectory() as directory:
+            monitor = OBSMonitor(Path(directory) / "conexion_obs.json", start_worker=False)
+            client = MagicMock()
+            with patch("obs_monitor.OBSWebSocket", return_value=client) as socket_client:
+                result = monitor.diagnostic()
+            self.assertEqual(result, {"state": "ready", "port": 4455,
+                                      "source_configured": False})
+            socket_client.assert_called_once_with(4455, "")
+            client.close.assert_called_once()
+
+    def test_websocket_diagnostic_distinguishes_failure_modes_without_secrets(self):
+        with tempfile.TemporaryDirectory() as directory:
+            monitor = OBSMonitor(Path(directory) / "conexion_obs.json", start_worker=False)
+            failures = (
+                (OBSAuthRequired("password required"), "password_required"),
+                (OBSAuthRejected("password rejected"), "auth_failed"),
+                (OBSProtocolIncompatible("old protocol"), "incompatible"),
+                (ConnectionRefusedError("OBS not running"), "unavailable"),
+            )
+            for failure, expected in failures:
+                with self.subTest(state=expected), patch("obs_monitor.OBSWebSocket", side_effect=failure):
+                    result = monitor.diagnostic()
+                self.assertEqual(result["state"], expected)
+                self.assertNotIn("password", result)
+                self.assertNotIn("OBS not running", str(result))
+
     def test_graphic_status_never_claims_air_without_obs_confirmation(self):
         graphic = {"visible": True, "mode": "lectura"}
         status = {"configured": True, "connected": True, "source_active": True, "streaming": True}

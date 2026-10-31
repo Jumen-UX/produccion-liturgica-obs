@@ -8,5 +8,10 @@ Requisitos del modo fuente: Windows y Python 3.
 3. Configurar en OBS una fuente Navegador apuntando a http://127.0.0.1:8765/overlay.html en 1920x1080.
 4. Revisar la vista previa y publicar solo los contenidos aprobados.
 
+Para confirmar el indicador AL AIRE, usar OBS Studio 28 o superior, que ya incluye
+WebSocket 5.x. En OBS: Herramientas > Ajustes del servidor WebSocket > habilitar.
+El panel de este programa te avisará si la conexión no está disponible o necesita
+contraseña, y permite volver a comprobarla. No se instala ningún plugin de OBS.
+
 Para compilar el ejecutable, utilizar CREAR_EXE_WINDOWS.bat con conexión a internet.
 Nunca subir a GitHub configuraciones privadas, fotos personales ni secretos de la parroquia.

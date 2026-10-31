@@ -24,6 +24,18 @@ class OBSRequestError(OBSConnectionError):
     pass
 
 
+class OBSAuthRequired(OBSConnectionError):
+    pass
+
+
+class OBSAuthRejected(OBSConnectionError):
+    pass
+
+
+class OBSProtocolIncompatible(OBSConnectionError):
+    pass
+
+
 class OBSWebSocket:
     """Cliente WebSocket de texto para OBS en 127.0.0.1."""
 
@@ -36,13 +48,13 @@ class OBSWebSocket:
         try:
             self._handshake()
             greeting = self.receive()
-            if greeting.get("op") != 0:
-                raise OBSConnectionError("OBS no respondió con el protocolo WebSocket 5.x")
+            if not isinstance(greeting, dict) or greeting.get("op") != 0:
+                raise OBSProtocolIncompatible("El servidor no usa el protocolo OBS WebSocket 5.x")
             auth = greeting.get("d", {}).get("authentication")
             identify = {"rpcVersion": 1}
             if auth:
                 if not password:
-                    raise OBSConnectionError("OBS solicita contraseña: introdúcela en el panel web")
+                    raise OBSAuthRequired("OBS solicita contraseña: introdúcela en el panel web")
                 challenge = auth["challenge"]
                 salt = auth["salt"]
                 secret = base64.b64encode(hashlib.sha256((password + salt).encode()).digest()).decode()
@@ -50,8 +62,9 @@ class OBSWebSocket:
                     hashlib.sha256((secret + challenge).encode()).digest()
                 ).decode()
             self.send({"op": 1, "d": identify})
-            if self.receive().get("op") != 2:
-                raise OBSConnectionError("OBS rechazó la identificación WebSocket")
+            identified = self.receive()
+            if not isinstance(identified, dict) or identified.get("op") != 2:
+                raise OBSAuthRejected("OBS rechazó la identificación WebSocket: comprueba la contraseña")
         except Exception:
             self.close()
             raise
@@ -205,6 +218,33 @@ class OBSMonitor:
     def configuration(self):
         with self.lock:
             return {**self.config, "has_password": bool(self.password)}
+
+    def diagnostic(self):
+        """Comprobar la disponibilidad real del WebSocket 5.x sin exigir fuente configurada.
+
+        Una conexión rechazada no permite distinguir OBS cerrado, función desactivada,
+        puerto equivocado o instalación sin WebSocket. Nunca afirmar que falta instalarlo.
+        """
+        with self.lock:
+            port = self.config["port"]
+            password = self.password
+            source_configured = bool(self.config["source_name"])
+        client = None
+        try:
+            client = OBSWebSocket(port, password)
+            state = "ready"
+        except OBSAuthRequired:
+            state = "password_required"
+        except OBSAuthRejected:
+            state = "auth_failed"
+        except OBSProtocolIncompatible:
+            state = "incompatible"
+        except (OSError, OBSConnectionError, ValueError, KeyError, TypeError):
+            state = "unavailable"
+        finally:
+            if client:
+                client.close()
+        return {"state": state, "port": port, "source_configured": source_configured}
 
     def configure(self, values):
         updated = self._validated(values)

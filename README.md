@@ -48,10 +48,12 @@ Si ejecutas desde código fuente (sin EXE) y quieres generar QR, instala una vez
 
 ### Comprobación del gráfico en programa de OBS
 
-1. Dentro de OBS, habilitar **Herramientas → Ajustes del servidor WebSocket**. El puerto usual es `4455`; utilizar autenticación cuando esté disponible.
+1. Utilizar preferentemente **OBS Studio 28 o posterior**, que ya incluye **obs-websocket 5.x**. No es necesario instalar un plugin adicional. Dentro de OBS, habilitar **Herramientas → Ajustes del servidor WebSocket**. El puerto usual es `4455`; mantener la autenticación activada.
 2. En el panel web, abrir **Avanzado → Conexión y verificación de OBS**. Escribir el nombre **exacto** de la Fuente de navegador usada para `overlay.html` (por ejemplo, «Navegador 2»), el puerto y la contraseña WebSocket, si OBS la exige. Pulsar «Guardar y verificar OBS».
 3. El Dock y el panel mostrarán **AL AIRE** solamente si el gráfico está publicado, la fuente aparece activa en la salida de programa y OBS confirma una transmisión activa. **EN PROGRAMA** indica que la fuente está en programa sin transmisión activa. **FUERA DE PROGRAMA** significa que la fuente no está activa en programa. **SIN VERIFICAR** indica que falta configuración, conexión o confirmación de OBS.
 4. «Imagen limpia» y «Restaurar» siguen disponibles aunque OBS WebSocket no esté conectado; no se bloquea la operación de los gráficos.
+
+**Diagnóstico automático:** al abrir el panel se prueba la conexión local con WebSocket 5.x, incluso antes de configurar el nombre de la fuente. Si falta contraseña, es incorrecta, responde un protocolo incompatible o el servidor no está accesible, aparece una advertencia en **todos los niveles** (incluido Esencial) con instrucciones y el botón «Volver a comprobar». Cuando el puerto no responde, el programa **no afirma que el complemento esté ausente**: también puede ocurrir porque OBS está cerrado, el servidor está deshabilitado o el puerto es distinto. El instalador de Windows muestra estos requisitos; **no modifica OBS ni instala automáticamente plugins**. En OBS antiguos, actualizar a la versión 28 o posterior es la opción recomendada.
 
 La conexión consulta solamente `GetStreamStatus` y `GetSourceActive`; no inicia ni detiene transmisiones y nunca modifica escenas. El nombre y puerto se conservan en `conexion_obs.json`; **la contraseña solo permanece en memoria durante la ejecución**, no se guarda en archivos ni se envía de vuelta a los navegadores. Por seguridad, la conexión se limita a `127.0.0.1`.
 

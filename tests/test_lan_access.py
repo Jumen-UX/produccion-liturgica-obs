@@ -93,6 +93,9 @@ class LANAccessTests(unittest.TestCase):
         status = self.json(self.local_url, "/api/lan/status")
         self.assertTrue(status["operator_configured"])
         self.assertNotIn("digest", json.dumps(status))
+        with patch.object(servidor.OBS_MONITOR, "diagnostic", return_value={"state": "password_required", "port": 4455, "source_configured": False}):
+            diagnosis = self.json(self.local_url, "/api/obs-diagnostic")
+        self.assertEqual(diagnosis["state"], "password_required")
         self.assertEqual(self.json(self.lan_url, "/api/session", opener=self.operator)["role"], "operator")
         self.assertEqual(self.json(self.lan_url, "/api/session", opener=self.viewer)["role"], "viewer")
 
@@ -100,7 +103,7 @@ class LANAccessTests(unittest.TestCase):
         self.setup_credentials()
         for path in ("/panel.html", "/studio.html", "/overlay.html", "/servidor.py",
                      "/README.md", "/configuracion.json", "/acceso_lan.json",
-                     "/api/lan/status", "/api/obs-config", "/api/lan/qr.svg"):
+                     "/api/lan/status", "/api/obs-config", "/api/obs-diagnostic", "/api/lan/qr.svg"):
             with self.subTest(path=path):
                 self.assert_denied(404, self.lan_url, path, opener=self.operator)
         self.assert_denied(401, self.lan_url, "/api/state")

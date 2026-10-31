@@ -193,6 +193,8 @@ class Handler(SimpleHTTPRequestHandler):
             with LOCK:self.respond(snapshot() if path=="/api/state" else copy.deepcopy(draft))
         elif path=="/api/obs-config":
             self.respond(OBS_MONITOR.configuration())
+        elif path=="/api/obs-diagnostic" and not self.remote:
+            self.respond(OBS_MONITOR.diagnostic())
         elif path=="/api/obs-status":
             with LOCK:current=snapshot()
             status=OBS_MONITOR.get_status()
