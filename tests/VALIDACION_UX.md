@@ -27,7 +27,7 @@ Entorno: Windows, navegador Chromium/Edge y dock de OBS cuando esté integrado.
 
 ## Actualizaciones y desinstalación en Windows
 
-- [ ] **Prueba automatizada incorporada al CI:** instalar dos paquetes sucesivos con el mismo `AppId` y versiones de prueba distintas; verificar una sola entrada de desinstalación y persistencia de un archivo de datos. Marcar aprobado solo cuando lo confirme GitHub Actions.
+- [x] **Prueba automatizada incorporada al CI:** instalar dos paquetes sucesivos con el mismo `AppId` y versiones de prueba distintas; verificar una sola entrada de desinstalación y persistencia de un archivo de datos. [GitHub Actions #13: aprobado](https://github.com/Jumen-UX/produccion-liturgica-obs/actions/runs/41211102589).
 - [ ] En una PC Windows de pruebas, instalar realmente una versión anterior publicada o entregada para pruebas (no una segunda compilación del mismo código).
 - [ ] Preparar nombre de comunidad, logo, plantilla, participantes y acceso LAN; hacer respaldo privado de `%LOCALAPPDATA%\ProduccionLiturgicaOBS`.
 - [ ] Cerrar el programa auxiliar y OBS cuando sea necesario para liberar el ejecutable; instalar la nueva versión **sin desinstalar primero**.
