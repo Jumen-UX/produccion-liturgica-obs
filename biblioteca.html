@@ -134,6 +134,15 @@ $('production').onchange=()=>mutate({action:'select_production',production_id:$(
 $('addProduction').onclick=()=>{const name=prompt('Nombre de la nueva producción:');if(name?.trim())mutate({action:'create_production',name:name.trim()})};
 $('addItem').onclick=()=>edit(null);
 $('cancelItem').onclick=()=>{editing=null;render()};
-$('saveItem').onclick=()=>{const data={...editing.data};for(const [k] of fields[kind])data[k]=$('field-'+k).value;const item={type:kind,name:$('itemName').value,enabled:$('itemEnabled').checked,data};const requestData={action:editing.id?'update':'add',item,item_id:editing.id};editing=null;mutate(requestData)};
+$('saveItem').onclick=async()=>{
+ if(!editing)return;
+ const data={...editing.data};for(const [k] of fields[kind])data[k]=$('field-'+k).value;
+ const item={type:kind,name:$('itemName').value,enabled:$('itemEnabled').checked,data};
+ const payload={action:editing.id?'update':'add',item,item_id:editing.id};
+ const button=$('saveItem');button.disabled=true;
+ try{state=await request('/api/productions',payload);editing=null;render();notice('Elemento guardado. La salida de OBS no se ha modificado.')}
+ catch(e){notice(e.message,true)}
+ finally{button.disabled=false}
+};
 reload().catch(e=>notice(e.message,true));
 </script></body></html>
