@@ -85,6 +85,13 @@ jobs:
           & $iscc "/DMyAppVersion=$version" "installer/windows.iss"
           if ($LASTEXITCODE -ne 0) { throw "Falló el instalador" }
 
+      - name: Verificar actualización y conservación de datos
+        shell: pwsh
+        run: |
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          $version = "${{ github.ref_type == 'tag' && github.ref_name || '0.1.0-dev' }}"
+          ./tests/verify_windows_upgrade.ps1 -IsccPath $iscc -CurrentInstaller "dist/installer/ProduccionLiturgicaOBS-Setup.exe" -CurrentVersion $version
+
       - name: Subir compilados para revisión
         uses: actions/upload-artifact@v4
         with:

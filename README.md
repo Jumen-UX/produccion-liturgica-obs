@@ -21,10 +21,11 @@ Sistema local y configurable de gráficos para transmisiones de celebraciones li
 - Portátil: `ProduccionLiturgicaOBS-Portable.zip`, descomprimir y abrir el EXE.
 - Ninguna descarga necesita Python en el PC del operador.
 - Los datos de cada parroquia se conservan en `%LOCALAPPDATA%\ProduccionLiturgicaOBS` fuera de la carpeta del programa.
+- Para actualizar una instalación hecha con el instalador, **cierra primero la aplicación y ejecuta el nuevo instalador**: el identificador de instalación (`AppId`) se mantiene fijo para actualizar en el mismo lugar. No desinstales manualmente ni borres los datos de `%LOCALAPPDATA%`. Si usabas un ZIP portátil o un EXE suelto, elimina las copias antiguas solo después de verificar que la nueva abre y conserva tus datos.
 
 ### GitHub Actions
 
-El flujo `.github/workflows/windows-release.yml` compila y prueba el ejecutable, crea instalador y ZIP. Los pull requests generan artefactos de prueba. Solo las etiquetas `vX.Y.Z` publican en GitHub Releases. **No publicar versiones estables sin validar en Windows y OBS.**
+El flujo `.github/workflows/windows-release.yml` compila y prueba el ejecutable, crea instalador y ZIP. Además, en un **runner Windows desechable**, compila una versión anterior simulada del mismo paquete y prueba instalarla, actualizarla y desinstalarla, comprobando que hay una sola entrada instalada y que los datos locales sobreviven. **Esta prueba automatizada no sustituye actualizar una versión verdaderamente antigua en una PC del operador.** Los pull requests generan artefactos de prueba. Solo las etiquetas `vX.Y.Z` publican en GitHub Releases. **No publicar versiones estables sin validar en Windows y OBS.**
 
 ## Instalación en Windows (código fuente)
 
