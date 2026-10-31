@@ -31,7 +31,7 @@ jobs:
 
       - name: Probar formulario LAN y sintaxis JavaScript
         shell: pwsh
-        run: node --test tests/test_lan_panel.cjs
+        run: node --test tests/test_lan_panel.cjs tests/test_preview_contract.cjs
 
       - name: Probar interfaces adaptativas en Chromium
         shell: pwsh
