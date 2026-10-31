@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Biblioteca de producciones · OBS</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#edf1f6;font:15px 'Segoe UI',sans-serif;color:#17283d}
+header{background:#0d233f;color:#fff;padding:17px 4%;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+header h1{font-size:23px;margin:0}a{color:inherit}header a{color:#f4db9d}
+main{max-width:1350px;margin:auto;padding:20px;display:grid;grid-template-columns:265px minmax(0,1fr);gap:17px}
+.card{background:white;border:1px solid #dae3ec;border-radius:13px;padding:16px;margin-bottom:12px}
+h2{font-size:17px;margin:0 0 12px}h3{font-size:15px;margin:0}
+button,select,input,textarea{font:inherit;border-radius:8px;min-height:40px}
+input,select,textarea{padding:9px;border:1px solid #b8c6d4;width:100%;background:#fff;color:#152b45}
+button{border:0;background:#193c60;color:white;font-weight:600;padding:9px 13px;cursor:pointer}
+button.secondary{background:#e9eef4;color:#193c60}
+button.danger{background:#fbe5e5;color:#8d2525}
+button:disabled{opacity:.5;cursor:not-allowed}
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid #e1c16c;outline-offset:2px}
+.actions{display:flex;gap:7px;flex-wrap:wrap;align-items:center}
+label{font-size:13px;font-weight:650;display:block;margin:12px 0 5px}
+.category{display:flex;justify-content:space-between;align-items:center;width:100%;text-align:left;margin:5px 0;background:#edf1f6;color:#193c60}
+.category.selected{background:#193c60;color:white}
+.muted{color:#5f7185;font-size:13px;line-height:1.45}.row{display:flex;align-items:center;gap:10px;justify-content:space-between;flex-wrap:wrap}
+.graphic{display:flex;align-items:center;gap:12px;border:1px solid #dae3ec;border-radius:10px;padding:12px;margin:8px 0;background:#fff}
+.graphic.active{border-color:#318568;background:#f1faf6}.graphic>div{flex:1;min-width:180px}
+.graphic small{display:block;color:#65768a;margin-top:4px}.graphic .actions button{padding:7px 10px;min-height:35px}
+#editor{background:#f7f9fb;border-radius:12px;padding:14px}#editor[hidden]{display:none}
+#note{min-height:20px;color:#246b50}#note.error{color:#9a2e2e}
+.preview-stage{position:relative;width:100%;aspect-ratio:16/9;overflow:hidden;border-radius:10px;background:#17212e;border:1px solid #98a9ba;margin:12px 0}
+.preview-stage iframe{position:absolute;top:0;left:0;width:1920px;height:1080px;border:0;transform-origin:top left;transform:scale(.04);pointer-events:none}
+#socialRotation[hidden],#socialLogoControls[hidden],#previewStage[hidden]{display:none}
+#socialLogoThumb{height:54px;width:54px;object-fit:contain;background:#e8edf4;border-radius:10px}
+.social-controls{background:#f5f8fb;border:1px solid #d9e2eb;padding:12px;border-radius:10px;margin:12px 0}
+.social-controls .grid label{margin-top:6px}
+.social-notice{font-size:12px;color:#5f7185}
+
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media(max-width:850px){main{grid-template-columns:1fr;padding:10px}.graphic{align-items:flex-start;flex-wrap:wrap}.graphic .actions{width:100%}.grid{grid-template-columns:1fr}}
+</style></head><body>
+<header><div><h1>Biblioteca de producciones</h1><span style="color:#e2c990;font-size:13px">Prepara varios gráficos por categoría · lanza solo cuando lo decidas</span></div><nav><a href="/panel.html">Volver al panel principal</a> · <a href="/studio.html">Estudio de diseño</a> · <a href="/dock.html">Dock OBS</a></nav></header>
+<main><aside><section class="card"><h2>Producción activa</h2><label for="production">Elegir producción</label><select id="production"></select><div class="actions" style="margin-top:10px"><button id="addProduction">+ Nueva producción</button></div><p class="muted">Los datos quedan guardados en esta computadora. Los ejemplos pueden modificarse o eliminarse.</p></section><section class="card"><h2>Categorías</h2><div id="categories"></div></section></aside>
+<section><div class="card"><div class="row"><div><h2 id="heading">Gráficos</h2><p class="muted">Cada fila es un elemento independiente. Puedes duplicarlo o cambiar el orden.</p></div><button id="addItem">+ Agregar elemento</button></div><p id="note" role="status" aria-live="polite"></p>
+<div id="socialRotation" class="social-controls" hidden>
+<h3>Rotación de redes · una por turno</h3>
+<p class="muted">Selecciona cuánto dura cada red, el intervalo de aparición y en qué momentos se muestran. Los cambios no afectan una rotación ya iniciada hasta que la reinicies.</p>
+<div class="grid"><div><label for="socialDuration">Duración visible (segundos)</label><input id="socialDuration" type="number" min="3" max="30" value="7"></div>
+<div><label for="socialInterval">Intervalo entre inicios (segundos)</label><input id="socialInterval" type="number" min="3" max="900" value="12"></div>
+<div><label for="socialPlacement">Dónde mostrar</label><select id="socialPlacement"><option value="all">Espera, directo y cierre</option><option value="directo">Durante la transmisión</option><option value="espera">Solo espera</option><option value="cierre">Solo cierre</option></select></div>
+<div><label for="socialLoop">Repetir lista</label><select id="socialLoop"><option value="yes">Repetir continuamente</option><option value="no">Una vuelta y terminar</option></select></div></div>
+<div class="actions" style="margin-top:11px"><button id="socialSave" class="secondary">Guardar tiempos y orden</button><button id="socialStart">▶ Iniciar rotación</button><button id="socialStop" class="danger">■ Detener rotación</button></div>
+<p class="social-notice" id="socialStatus">Esta sección no altera OBS hasta que inicies la rotación.</p>
+</div><div id="items"></div>
+<div id="editor" hidden><h3 id="editorTitle">Editar gráfico</h3><label for="itemName">Nombre identificador (solo para organizar)</label><input id="itemName" maxlength="110">
+<div id="fields"></div><div id="socialLogoControls" hidden>
+<label for="socialLogoFile">Logo personalizado (PNG/JPG/WEBP)</label>
+<div class="actions"><img id="socialLogoThumb" alt="Logo elegido"><input type="file" id="socialLogoFile" accept="image/png,image/jpeg,image/webp" style="flex:1;min-width:180px"><button id="socialLogoClear" type="button" class="secondary">Usar icono original de la red</button></div>
+<p class="muted">Si no subes uno, aparece automáticamente el icono de la plataforma.</p></div>
+<label><input id="itemEnabled" type="checkbox" style="width:auto;min-height:0"> Habilitado</label><div id="previewStage" class="preview-stage"><iframe id="obsPreview" title="Vista previa real del gráfico en OBS" src="/overlay.html?preview=1" sandbox="allow-scripts allow-same-origin"></iframe></div><p class="muted" id="previewLabel">La vista previa usa el mismo renderizador que OBS. No modifica la emisión.</p><div class="actions"><button id="saveItem">Guardar elemento</button><button id="cancelItem" class="secondary">Cancelar</button></div></div></div></section></main>
+<script>
+const $=id=>document.getElementById(id);
+const labels={lower_third:'Lower Thirds',titulo:'Títulos',lectura:'Lecturas',salmo:'Salmos',aviso:'Avisos',red_social:'Redes sociales',frase:'Frases',logo:'Logos',qr:'Códigos QR',pantalla:'Pantallas',temporizador:'Temporizadores',credito:'Créditos',patrocinador:'Patrocinadores',imagen:'Imágenes',video:'Videos'};
+const fields={lower_third:[['name','Nombre mostrado'],['role','Cargo'],['subtitle','Subtítulo'],['template','Plantilla'],['enter','Entrada'],['exit','Salida'],['background','Color de fondo'],['accent','Color de acento'],['opacity','Opacidad (%)'],['duration','Duración animación (ms)']],titulo:[['title','Título'],['body','Detalle']],lectura:[['title','Lectura'],['body','Referencia']],salmo:[['title','Título'],['body','Referencia']],aviso:[['title','Aviso'],['body','Mensaje']],red_social:[['network','Red'],['handle','Usuario o enlace'],['phrase','Frase']],frase:[['text','Frase']],logo:[['name','Nombre']],qr:[['title','Texto'],['url','Enlace']],pantalla:[['title','Título'],['body','Texto']],temporizador:[['minutes','Minutos']],credito:[['title','Nombre'],['body','Descripción']],patrocinador:[['title','Patrocinador']],imagen:[['title','Descripción']],video:[['title','Descripción']]};
+const launchable=new Set(['lower_third','titulo','lectura','salmo','aviso','frase']);
+let state=null,kind='lower_third',editing=null,baseForPreview={mode:'limpio',visible:false},draftForPreview={lower_third:{}},previewReady=false;
+const NETWORKS=['instagram','facebook','youtube','whatsapp','telegram','tiktok','website'];
+const networkNames={instagram:'Instagram',facebook:'Facebook',youtube:'YouTube',whatsapp:'WhatsApp',telegram:'Telegram',tiktok:'TikTok',website:'Sitio web'};
+function scalePreview(){const stage=$('previewStage');$('obsPreview').style.transform='scale('+(stage.clientWidth/1920)+')'}
+window.addEventListener('message',event=>{if(event.origin===location.origin&&event.source===$('obsPreview').contentWindow&&event.data?.type==='plobs-preview-ready'){previewReady=true;scalePreview();preview('enter')}});
+$('obsPreview').addEventListener('load',()=>{scalePreview();if(location.origin!=='null')$('obsPreview').contentWindow.postMessage({type:'plobs-preview-ping'},location.origin);preview('enter')});
+scalePreview();if(typeof ResizeObserver!=='undefined')new ResizeObserver(scalePreview).observe($('previewStage'));
+function previewItemData(){const payload={...editing.data};for(const [key] of fields[kind])payload[key]=$('field-'+key)?.value||'';return payload}
+function previewState(){
+ const payload=previewItemData(),base={...baseForPreview,visible:true,social_rotation:null,social_enabled:false,social_now:false,social_during_mass:false};
+ if(kind==='lower_third')return {...base,mode:'lower_third',lower_third:{...(draftForPreview.lower_third||{}),...payload}};
+ if(kind==='red_social')return {...base,mode:'social_preview',social_now:true,social_rotation:{items:[payload],started_at:Date.now()/1000,settings:{duration:30,interval:30,loop:true,placement:'all'}}};
+ return {...base,mode:({titulo:'cintillo',lectura:'lectura',salmo:'salmo',aviso:'avisos',frase:'cintillo'})[kind]||'limpio',title:payload.title||payload.text||$('itemName').value,detail:payload.body||'',reference:'',subtitle:''};
+}
+
+async function request(path,body){const response=await fetch(path,{method:body?'POST':'GET',cache:'no-store',headers:body?{'Content-Type':'application/json'}:{},body:body?JSON.stringify(body):undefined});const data=await response.json();if(!response.ok)throw Error(data.error||'Error del servidor');return data}
+function notice(text,error=false){$('note').textContent=text;$('note').className=error?'error':''}
+function active(){return state.productions.find(p=>p.id===state.active_id)}
+async function reload(){const values=await Promise.all([request('/api/productions'),request('/api/state'),request('/api/draft')]);state=values[0];baseForPreview=values[1];draftForPreview=values[2];render()}
+async function mutate(payload){try{state=await request('/api/productions',payload);render();notice('Cambios guardados correctamente.')}catch(e){notice(e.message,true)}}
+function button(text,fn,klass='secondary'){const el=document.createElement('button');el.type='button';el.className=klass;el.textContent=text;el.onclick=fn;return el}
+function render(){const selected=active();
+$('socialRotation').hidden=kind!=='red_social';if(kind==='red_social'){const s=selected.social_settings||{duration:7,interval:12,loop:true,placement:'all'};$('socialDuration').value=s.duration;$('socialInterval').value=s.interval;$('socialPlacement').value=s.placement;$('socialLoop').value=s.loop?'yes':'no'}$('production').replaceChildren(...state.productions.map(p=>{const o=document.createElement('option');o.value=p.id;o.textContent=p.name;return o}));$('production').value=state.active_id;
+$('categories').replaceChildren(...Object.entries(labels).map(([key,label])=>{const count=selected.items.filter(i=>i.type===key).length;const b=button(label+' · '+count,()=>{kind=key;editing=null;render()},'category'+(kind===key?' selected':''));return b}));
+$('heading').textContent=labels[kind];const list=selected.items.filter(i=>i.type===kind);$('items').replaceChildren();
+if(!list.length){const p=document.createElement('p');p.className='muted';p.textContent='Todavía no hay elementos de este tipo. Usa «Agregar elemento».';$('items').append(p)}
+for(const item of list){const line=document.createElement('div');line.className='graphic';const info=document.createElement('div');const title=document.createElement('strong');title.textContent=item.name;const detail=document.createElement('small');detail.textContent=(item.enabled?'Preparado':'Desactivado')+' · '+Object.values(item.data).filter(v=>typeof v==='string').slice(0,2).join(' · ').slice(0,120);info.append(title,detail);
+const controls=document.createElement('span');controls.className='actions';
+if(launchable.has(kind)){const play=button('▶ Lanzar',()=>launch(item),'');play.disabled=!item.enabled;controls.append(play)}
+controls.append(button('Editar',()=>edit(item)),button('Duplicar',()=>mutate({action:'duplicate',item_id:item.id})),button('↑',()=>move(item,-1)),button('↓',()=>move(item,1)),button('Eliminar',()=>{if(confirm('¿Eliminar «'+item.name+'»?'))mutate({action:'delete',item_id:item.id})},'danger'));line.append(info,controls);$('items').append(line)}
+$('editor').hidden=editing===null;if(editing!==null)fillEditor()}
+function move(item,d){const all=active().items;const pos=all.findIndex(i=>i.id===item.id),target=pos+d;if(target<0||target>=all.length||all[target].type!==item.type)return notice('Solo puedes reordenar dentro de la misma categoría.',true);mutate({action:'move',item_id:item.id,index:target})}
+function edit(item){editing=item?structuredClone(item):{id:null,type:kind,name:'',enabled:true,data:{}};render();$('itemName').focus()}
+function fillEditor(){$('editorTitle').textContent=editing.id?'Editar elemento':'Nuevo elemento';$('socialLogoControls').hidden=kind!=='red_social';
+$('previewStage').hidden=!(launchable.has(kind)||kind==='red_social');
+$('previewLabel').textContent=$('previewStage').hidden?'Este tipo todavía no admite previsualización real.':'Vista previa fiel a OBS · 1920 × 1080 · no afecta la transmisión.';
+if(kind==='red_social')$('socialLogoThumb').src=editing.data.logo||'';
+$('itemName').value=editing.name;$('itemEnabled').checked=editing.enabled;$('fields').replaceChildren();
+for(const [key,label] of fields[kind]){const lab=document.createElement('label');lab.textContent=label;lab.htmlFor='field-'+key;let input;const templateOptions={classic:'Clásica',minimal:'Minimalista',liturgical:'Litúrgica',modern:'Moderna'};
+const motionOptions={fade:'Desvanecer',left:'Desde izquierda',right:'Desde derecha',rise:'Elevar',zoom:'Zoom',none:'Sin animación'};
+const options=kind==='red_social'&&key==='network'?Object.fromEntries(NETWORKS.map(n=>[n,networkNames[n]])):kind==='lower_third'&&key==='template'?templateOptions:kind==='lower_third'&&['enter','exit'].includes(key)?motionOptions:null;
+if(options){input=document.createElement('select');for(const [value,caption] of Object.entries(options)){const option=document.createElement('option');option.value=value;option.textContent=caption;input.append(option)}}else{input=document.createElement('input');input.maxLength=300;
+if(['background','accent'].includes(key))input.type='color';
+if(['duration','opacity'].includes(key)){input.type='number';input.min=key==='opacity'?'25':'150';input.max=key==='opacity'?'100':'2500';input.step=key==='duration'?'50':'1'}
+}
+input.id='field-'+key;
+const style=kind==='lower_third'?(draftForPreview.lower_third||{}):{};
+input.value=editing.data[key]??style[key]??(key==='network'?'instagram':'');
+if(input.type==='color'&&!input.value)input.value=key==='background'?'#152941':'#D6B678';
+input.oninput=preview;input.onchange=preview;$('fields').append(lab,input)}preview()}
+function preview(phase='update'){
+ if(!editing||$('previewStage').hidden||!previewReady||location.origin==='null')return;
+ $('obsPreview').contentWindow.postMessage({type:'plobs-preview',phase:typeof phase==='string'?phase:'update',state:previewState()},location.origin);
+}
+async function uploadSocialLogo(){
+ const file=$('socialLogoFile').files[0];if(!file)return;
+ if(file.size>5*1024*1024||!['image/png','image/jpeg','image/webp'].includes(file.type))return notice('Elige PNG/JPG/WEBP de hasta 5 MB.',true);
+ try{
+  const response=await fetch('/api/image',{method:'POST',headers:{'Content-Type':file.type},body:file});
+  const result=await response.json();if(!response.ok||!result.url)throw Error(result.error||'No se pudo subir el logo');
+  editing.data.logo=result.url;$('socialLogoThumb').src=result.url;preview();
+  notice('Logo personalizado cargado. Pulsa «Guardar elemento» para conservarlo.');
+ }catch(e){notice(e.message,true)}
+}
+$('socialLogoFile').onchange=uploadSocialLogo;
+$('socialLogoClear').onclick=()=>{if(!editing)return;editing.data.logo='';$('socialLogoThumb').removeAttribute('src');preview()};
+$('socialSave').onclick=()=>mutate({action:'social_settings',settings:{duration:Number($('socialDuration').value),interval:Number($('socialInterval').value),placement:$('socialPlacement').value,loop:$('socialLoop').value==='yes'}});
+$('socialStart').onclick=async()=>{try{await request('/api/update',{command:'social_rotation_start',production_id:state.active_id});$('socialStatus').textContent='Rotación activada en la salida local. Comprueba OBS y el Dock.';notice('Rotación iniciada.')}catch(e){notice(e.message,true)}};
+$('socialStop').onclick=async()=>{try{await request('/api/update',{command:'social_rotation_stop'});$('socialStatus').textContent='Rotación detenida.';notice('Rotación de redes detenida.')}catch(e){notice(e.message,true)}};
+async function launch(item){try{const result=await request('/api/update',{command:'library_launch',production_id:state.active_id,item_id:item.id});notice('Gráfico enviado a la salida local. Comprueba el estado «AL AIRE» en el Dock o panel.');}catch(e){notice(e.message,true)}}
+$('production').onchange=()=>mutate({action:'select_production',production_id:$('production').value});
+$('addProduction').onclick=()=>{const name=prompt('Nombre de la nueva producción:');if(name?.trim())mutate({action:'create_production',name:name.trim()})};
+$('addItem').onclick=()=>edit(null);
+$('cancelItem').onclick=()=>{editing=null;render()};
+$('saveItem').onclick=async()=>{
+ if(!editing)return;
+ const data={...editing.data};for(const [k] of fields[kind])data[k]=$('field-'+k).value;
+ const item={type:kind,name:$('itemName').value,enabled:$('itemEnabled').checked,data};
+ const payload={action:editing.id?'update':'add',item,item_id:editing.id};
+ const button=$('saveItem');button.disabled=true;
+ try{state=await request('/api/productions',payload);editing=null;render();notice('Elemento guardado. La salida de OBS no se ha modificado.')}
+ catch(e){notice(e.message,true)}
+ finally{button.disabled=false}
+};
+reload().catch(e=>notice(e.message,true));
+</script></body></html>

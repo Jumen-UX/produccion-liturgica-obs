@@ -4,6 +4,17 @@
 .social-strip{position:absolute;z-index:15;left:5.9%;bottom:12.2%;max-width:52%;display:flex;align-items:center;gap:15px;padding:12px 18px;border-radius:13px;background:color-mix(in srgb,var(--panel) 92%,transparent);box-shadow:0 10px 36px #0004;border:1px solid #ffffff22}.social-items{display:flex;flex-wrap:wrap;gap:8px 16px}.social-item{display:flex;align-items:center;gap:7px;font-size:19px;max-width:350px;overflow-wrap:anywhere}.social-icon{display:inline-flex;justify-content:center;align-items:center;min-width:27px;height:27px;background:var(--primary);color:var(--navy);font-size:13px;font-weight:800;border-radius:8px}.social-qr{width:82px;height:82px;object-fit:contain;background:white;padding:5px;border-radius:6px;flex-shrink:0}.social-strip.closing{left:50%;bottom:8%;transform:translateX(-50%);max-width:85%;width:max-content;justify-content:center}.social-strip.closing .social-item{font-size:22px}#wait:has(.social-strip:not(.hidden)) .bottom{bottom:3%}
 
 .logo-onair{position:absolute;z-index:25;right:3.2%;top:4%;width:clamp(95px,10vw,195px);height:clamp(70px,10vw,180px);display:grid;place-items:center;pointer-events:none;opacity:0;transition:opacity .7s ease,transform .7s ease;transform:translateY(-14px)}.logo-onair.show{opacity:1;transform:translateY(0)}.logo-onair img,.logo-onair video{width:100%;height:100%;object-fit:contain}.social-float{position:absolute;z-index:27;left:4%;bottom:5%;max-width:70%;background:color-mix(in srgb,var(--panel) 93%,transparent);border-left:5px solid var(--primary);padding:13px 22px;border-radius:8px;display:flex;align-items:center;gap:15px;pointer-events:none;opacity:0;transform:translateY(40px);transition:opacity .65s ease,transform .65s ease;box-shadow:0 12px 35px #0006}.social-float.show{opacity:1;transform:translateY(0)}.social-float .social-items{display:flex;gap:14px;flex-wrap:wrap}.social-float .social-item{font-size:19px}.social-float img.social-qr{width:65px;height:65px}.social-float.hidden-force{display:none}
+.social-icon{min-width:44px;height:44px;border-radius:12px;flex:none;color:#fff}
+.social-icon svg,.social-icon img{width:28px;height:28px;object-fit:contain}
+.social-icon img{width:100%;height:100%;border-radius:9px}
+.social-copy{display:flex;flex-direction:column;gap:3px;overflow-wrap:anywhere}
+.social-copy strong{color:var(--gold);font-size:clamp(14px,1.05vw,21px)}
+.social-copy>span{font-size:clamp(15px,1.2vw,24px);font-weight:650}
+.social-float.has-lower{left:auto;right:4%;max-width:40%}
+.social-float .social-items{flex-wrap:nowrap}
+.social-strip .social-items{flex-wrap:nowrap}
+.social-strip.closing .social-item{min-width:250px}
+
 .styled-lower{position:absolute;z-index:12;bottom:8%;left:4%;width:max-content;min-width:34%;max-width:80%;color:#fff;--lt-bg:#152941;--lt-accent:#D6B678;--lt-opacity:.94;--lt-duration:650ms;opacity:0;pointer-events:none;transform-origin:0 100%;overflow-wrap:anywhere}
 .styled-lower .style-panel{padding:22px 30px;background:color-mix(in srgb,var(--lt-bg) calc(var(--lt-opacity) * 100%),transparent);border-left:9px solid var(--lt-accent);border-radius:3px 15px 15px 3px;box-shadow:0 12px 28px #0008}
 .styled-lower .style-role{color:var(--lt-accent);font-size:clamp(16px,1.1vw,23px);font-weight:700;letter-spacing:.12em;text-transform:uppercase}
@@ -31,10 +42,72 @@
 <section id="full" class="full hidden"><div><img id="fullLogo" class="hidden"><div id="fullLabel" class="small"></div><h1 id="fullTitle"></h1><p id="fullSub"></p><p id="fullDetail"></p></div></section><div id="socialClose" class="social-strip closing hidden"><div class="social-items"></div><img class="social-qr hidden" alt="Código QR de las redes parroquiales"></div><div id="ticker" class="ticker hidden"></div></div>
 <script>
 const el=id=>document.getElementById(id);const particles=el('particles');for(let i=0;i<48;i++){const d=document.createElement('i');d.className='particle';d.style.setProperty('--left',Math.random()*100+'%');d.style.setProperty('--dur',12+Math.random()*23+'s');d.style.setProperty('--move',(-180+Math.random()*360)+'px');d.style.animationDelay=(-Math.random()*35)+'s';particles.appendChild(d)}
-let oldMode='',messages=[],lastMsg=-1,lastSlide=-1;let lastSocial='';
-function showSocial(s,mode){const accounts=s.social_accounts||{};const data=Object.entries({instagram:'IG',facebook:'f',youtube:'YT',whatsapp:'WA'}).filter(([key])=>!!(accounts[key]||'').trim());const valid=data.length>0||!!s.social_qr;const key=JSON.stringify([data,accounts,s.social_qr]);const nodes=[el('socialWait'),el('socialClose'),el('socialDuring')];if(key!==lastSocial){nodes.forEach(box=>{const items=box.querySelector('.social-items');items.replaceChildren();data.forEach(([platform,short])=>{const entry=document.createElement('div');entry.className='social-item';const ico=document.createElement('span');ico.className='social-icon';ico.textContent=short;const label=document.createElement('span');label.textContent=accounts[platform];entry.append(ico,label);items.append(entry)});const qr=box.querySelector('img');qr.classList.toggle('hidden',!s.social_qr);if(s.social_qr)qr.src=s.social_qr});lastSocial=key}nodes[0].classList.toggle('hidden',mode!=='espera'||!s.social_enabled||!valid);nodes[1].classList.toggle('hidden',mode!=='cierre'||!s.social_closing||!valid);
-const allowed=['cintillo','participante'];const show=(allowed.includes(mode)&&s.social_during_mass&&valid&&s.visible&&((s.social_now===true)||((Math.floor(Date.now()/1000)%(Math.max(30,Number(s.social_every)||150)))<Math.min(30,Math.max(3,Number(s.social_duration)||9)))&&s.social_now!==false));
-el('socialDuring').classList.toggle('show',!!show);el('socialDuring').classList.toggle('hidden-force',!allowed.includes(mode)||!s.social_during_mass||!valid);
+let oldMode='',messages=[],lastMsg=-1,lastSlide=-1;
+// Una red por turno: la lista emitida queda fijada al iniciar la rotación.
+const socialMarks={
+ instagram:'<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5" fill="none" stroke="currentColor" stroke-width="2.4"/><circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" stroke-width="2.2"/><circle cx="17.5" cy="6.6" r="1.3" fill="currentColor"/></svg>',
+ facebook:'<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M14.1 22v-8.8H17l.5-3.6h-3.4V7.3c0-1.1.4-1.8 1.9-1.8h1.7V2.3C17 2.1 16 2 15 2c-3.2 0-5.2 2-5.2 5.4v2.2H7v3.6h2.8V22z"/></svg>',
+ youtube:'<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="1.5" y="5" width="21" height="14" rx="4" fill="currentColor"/><path d="m10 8.5 6 3.5-6 3.5z" fill="#fff"/></svg>',
+ whatsapp:'<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2.3" d="M20.4 11.5a8.3 8.3 0 0 1-12.2 7.3L3 20l1.4-4.8a8.3 8.3 0 1 1 16-3.7z"/><path fill="currentColor" d="M8.4 7.5c-.8.3-1.2 1.3-.7 2.5 1 2.6 3.8 5.2 6.5 6.1 1.2.4 2.4-.1 2.8-.9l-2.4-1.5-1.1 1c-1.5-.7-2.8-1.8-3.6-3.3l.8-1.1z"/></svg>',
+ telegram:'<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M21.8 3.4 2.9 10.7c-1.2.5-1.2 1.3 0 1.7l4.8 1.5 1.9 6c.2.5.3.7.7.7s.6-.2.9-.5l2.7-2.7 5 3.7c.9.5 1.5.3 1.8-.9L23 5c.3-1.3-.5-1.9-1.2-1.6zM9 13.6 19 7.3l-8.1 7.5-.3 3.1z"/></svg>',
+ tiktok:'<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M14 2h3c.2 2.9 1.7 4.6 4.2 4.8v3.4c-1.8 0-3.3-.6-4.6-1.6v6.7A6.8 6.8 0 1 1 9.7 8.6v3.6a3.3 3.3 0 1 0 3.8 3.3V2z"/></svg>',
+ website:'<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><path d="M3 12h18M12 3c-5 5-5 13 0 18M12 3c5 5 5 13 0 18" fill="none" stroke="currentColor" stroke-width="1.7"/></svg>'
+};
+const socialColors={instagram:'#b73c8d',facebook:'#1877f2',youtube:'#f20d16',whatsapp:'#169e61',telegram:'#259bd5',tiktok:'#20222b',website:'#285d87'};
+const socialPhrases={instagram:'Síguenos',facebook:'Dale like y comparte',youtube:'Suscríbete',whatsapp:'Escríbenos',telegram:'Únete al canal',tiktok:'Síguenos',website:'Visítanos'};
+let lastSocial='';
+function showSocial(s,mode){
+ const rotation=s.social_rotation;
+ const usingPlaylist=!!(rotation&&Array.isArray(rotation.items)&&rotation.items.length);
+ const legacyAccounts=s.social_accounts||{};
+ const entries=usingPlaylist?rotation.items.filter(x=>x&&x.handle):
+  Object.keys(socialPhrases).filter(k=>legacyAccounts[k]).map(network=>({network,handle:legacyAccounts[network],phrase:socialPhrases[network],logo:''}));
+ if(!usingPlaylist&&s.social_qr)entries.push({network:'qr',handle:'Escanea y conecta',phrase:'Comparte la transmisión',logo:s.social_qr});
+ const settings=usingPlaylist?rotation.settings||{}:{duration:s.social_duration||9,interval:s.social_every||150,loop:true,placement:'all'};
+ const duration=Math.max(3,Math.min(30,Number(settings.duration)||7));
+ const interval=Math.max(duration,Math.min(900,Number(settings.interval)||12));
+ const elapsed=Math.max(0,Date.now()/1000-(usingPlaylist?Number(rotation.started_at)||0:0));
+ const turn=Math.floor(elapsed/interval);
+ const idx=entries.length?(usingPlaylist?turn%entries.length:Math.floor(Date.now()/1000/interval)%entries.length):-1;
+ const slotVisible=usingPlaylist?(settings.loop!==false||turn<entries.length)&&elapsed%interval<duration:
+  Math.floor(Date.now()/1000)%interval<duration;
+ const inWaiting=mode==='espera',inClosing=mode==='cierre';
+ const isPreview=mode==='social_preview';
+ const inDirect=!inWaiting&&!inClosing&&mode!=='limpio'&&mode!=='incidencia';
+ const placement=settings.placement||'all';
+ const placeAllowed=isPreview||placement==='all'||
+     (placement==='espera'&&inWaiting)||(placement==='cierre'&&inClosing)||
+     (placement==='directo'&&inDirect);
+ const oldAllowed=inWaiting?s.social_enabled:inClosing?s.social_closing:s.social_during_mass;
+ const allowed=(usingPlaylist||oldAllowed)&&placeAllowed&&idx>=0&&s.visible!==false&&s.social_now!==false&&
+     (isPreview||inWaiting||inClosing||inDirect)&&
+     (usingPlaylist?slotVisible:(inWaiting||inClosing||s.social_now===true||slotVisible));
+ const boxes=[el('socialWait'),el('socialClose'),el('socialDuring')];
+ const target=inWaiting?boxes[0]:inClosing?boxes[1]:boxes[2];
+ const selected=allowed?entries[idx]:null;
+ const key=JSON.stringify([selected,allowed,mode]);
+ if(key!==lastSocial){
+  boxes.forEach(box=>{
+   const items=box.querySelector('.social-items');items.replaceChildren();
+   const qr=box.querySelector('img.social-qr');qr.classList.add('hidden');
+   if(!selected||box!==target)return;
+   const entry=document.createElement('div');entry.className='social-item';
+   const icon=document.createElement('span');icon.className='social-icon';icon.style.background=socialColors[selected.network]||'#315d7d';
+   if(selected.logo&&/^\/media\/[a-f0-9]{32}\.(png|jpg|webp)$/.test(selected.logo)){
+    const img=document.createElement('img');img.alt='';img.src=selected.logo;icon.append(img);
+   }else if(selected.network==='qr'&&s.social_qr){const img=document.createElement('img');img.alt='';img.src=s.social_qr;icon.append(img)}
+   else icon.innerHTML=socialMarks[selected.network]||socialMarks.website;
+   const copy=document.createElement('span');copy.className='social-copy';
+   const phrase=document.createElement('strong');phrase.textContent=selected.phrase||socialPhrases[selected.network]||'Conéctate';
+   const handle=document.createElement('span');handle.textContent=selected.handle||'';
+   copy.append(phrase,handle);entry.append(icon,copy);items.append(entry);
+  });lastSocial=key;
+ }
+ boxes[0].classList.toggle('hidden',!allowed||target!==boxes[0]);
+ boxes[1].classList.toggle('hidden',!allowed||target!==boxes[1]);
+ boxes[2].classList.toggle('show',allowed&&target===boxes[2]);
+ boxes[2].classList.toggle('hidden-force',!allowed||target!==boxes[2]);
+ boxes[2].classList.toggle('has-lower',mode==='lower_third');
 }
 
 let styledActive=false,styledTimer=null;
@@ -86,5 +159,27 @@ persistent.classList.toggle('show',logoVisible);
 if(s.logo_video){if(video.getAttribute('src')!==s.logo_video){video.src=s.logo_video;video.load();video.play().catch(()=>{});}video.style.display='block';img.style.display='none';}
 else{video.style.display='none';if(!video.paused)video.pause();img.style.display='block';if(s.logo&&img.getAttribute('src')!==s.logo)img.src=s.logo;}
 for(let [id,show] of [['waitLogo',mode==='espera'],['fullLogo',full]]){let img=el(id);img.classList.toggle('hidden',!show||!s.logo);if(s.logo&&img.getAttribute('src')!==s.logo)img.setAttribute('src',s.logo)}oldMode=mode}
-async function tick(){try{let r=await fetch('/api/state',{cache:'no-store'});render(await r.json())}catch(e){}}setInterval(tick,500);tick();
+// La vista previa utiliza exactamente este mismo DOM y CSS. No lee ni modifica la salida real.
+const previewMode=new URLSearchParams(location.search).get('preview')==='1';
+if(previewMode){
+ window.addEventListener('message',event=>{
+  if(event.source!==window.parent||event.origin!==location.origin)return;
+  const message=event.data;
+  if(message?.type==='plobs-preview-ping'){window.parent.postMessage({type:'plobs-preview-ready'},location.origin);return;}
+  if(!message||message.type!=='plobs-preview'||!message.state||typeof message.state!=='object')return;
+  if(message.phase==='exit'){
+   syncStyledLower(message.state,'preview-exit');
+   return;
+  }
+  if(message.phase==='enter'){
+   styledActive=false;clearTimeout(styledTimer);
+   el('styledLower').className='styled-lower hidden';
+  }
+  render(message.state);
+ });
+ window.parent.postMessage({type:'plobs-preview-ready'},location.origin);
+}else{
+ async function tick(){try{let r=await fetch('/api/state',{cache:'no-store'});render(await r.json())}catch(e){}}
+ setInterval(tick,500);tick();
+}
 </script></body></html>

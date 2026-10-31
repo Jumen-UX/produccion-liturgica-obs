@@ -2,7 +2,7 @@ name: Windows · compilar y distribuir
 
 on:
   pull_request:
-    branches: [main, feature/graphics-live-integration]
+    branches: [main, feature/graphics-live-integration, feature/lan-remote-access]
   push:
     tags:
       - 'v*'
@@ -31,7 +31,7 @@ jobs:
 
       - name: Probar formulario LAN y sintaxis JavaScript
         shell: pwsh
-        run: node --test tests/test_lan_panel.cjs
+        run: node --test tests/test_lan_panel.cjs tests/test_preview_contract.cjs
 
       - name: Probar interfaces adaptativas en Chromium
         shell: pwsh
@@ -41,13 +41,13 @@ jobs:
         shell: pwsh
         run: |
           python -m pip install --disable-pip-version-check pyinstaller pystray pillow qrcode
-          python -m compileall -q launcher.py servidor.py lan_access.py obs_monitor.py
+          python -m compileall -q launcher.py servidor.py lan_access.py obs_monitor.py production_library.py
           python -m unittest discover -s tests -p 'test_*.py' -v
 
       - name: Compilar ejecutable portátil
         shell: pwsh
         run: |
-          pyinstaller --noconfirm --clean --onefile --windowed --name ProduccionLiturgicaOBS --add-data "panel.html;." --add-data "overlay.html;." --add-data "dock.html;." --add-data "studio.html;." --add-data "login.html;." --add-data "remote.html;." --hidden-import pystray._win32 launcher.py
+          pyinstaller --noconfirm --clean --onefile --windowed --name ProduccionLiturgicaOBS --add-data "panel.html;." --add-data "overlay.html;." --add-data "dock.html;." --add-data "studio.html;." --add-data "biblioteca.html;." --add-data "login.html;." --add-data "remote.html;." --hidden-import pystray._win32 launcher.py
           if (!(Test-Path "dist/ProduccionLiturgicaOBS.exe")) { throw "No se generó el ejecutable" }
 
       - name: Probar inicio y servidor HTTP
@@ -65,7 +65,8 @@ jobs:
                 $overlay = Invoke-WebRequest -Uri "http://127.0.0.1:8765/overlay.html" -TimeoutSec 2
                 $dock = Invoke-WebRequest -Uri "http://127.0.0.1:8765/dock.html" -TimeoutSec 2
                 $studio = Invoke-WebRequest -Uri "http://127.0.0.1:8765/studio.html" -TimeoutSec 2
-                if ($state.parish_name -and $page.StatusCode -eq 200 -and $overlay.StatusCode -eq 200 -and $dock.StatusCode -eq 200 -and $studio.StatusCode -eq 200) { $ready = $true; break }
+                $library = Invoke-WebRequest -Uri "http://127.0.0.1:8765/biblioteca.html" -TimeoutSec 2
+                if ($state.parish_name -and $page.StatusCode -eq 200 -and $overlay.StatusCode -eq 200 -and $dock.StatusCode -eq 200 -and $studio.StatusCode -eq 200 -and $library.StatusCode -eq 200) { $ready = $true; break }
               } catch { }
             }
             if (!$ready) { throw "El panel y el overlay no respondieron" }

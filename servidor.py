@@ -7,12 +7,14 @@ import json, copy, time, uuid, re, threading, os
 from obs_monitor import (OBSAuthRejected, OBSAuthRequired, OBSConnectionError,
                          OBSMonitor, OBSProtocolIncompatible, graphic_state)
 from lan_access import LANAccess, LANRuntime, local_addresses
+from production_library import ProductionLibrary
 
 ROOT=Path(os.environ.get("LITURGIA_APP_DIR",Path(__file__).resolve().parent)).resolve()
 DATA=ROOT/"configuracion.json"
 OBS_MONITOR=OBSMonitor(ROOT/"conexion_obs.json")
 LAN_ACCESS=LANAccess(ROOT/"acceso_lan.json")
 LAN_RUNTIME=None
+PRODUCTIONS=ProductionLibrary(ROOT/"producciones.json")
 LOCK=threading.RLock()
 EVENT_CONDITION=threading.Condition()
 EVENT_VERSION=0
@@ -56,9 +58,9 @@ last_visible_state=None
 MODES={"espera","cintillo","lectura","salmo","evangelio","homilia","ofertorio","comunion","avisos","cierre","limpio","incidencia","participante","lower_third"}
 THEMES={"ordinario","adviento","navidad","cuaresma","pascua","pentecostes","martires","blanco","rojo","verde","morado","rosa","negro","personalizado"}
 MEDIA_RE=re.compile(r"^/media/[a-f0-9]{32}\.(?:png|jpg|webp|mp4|webm)$")
-STATIC_PAGES={"/panel.html","/overlay.html","/dock.html","/studio.html","/login.html","/remote.html"}
+STATIC_PAGES={"/panel.html","/overlay.html","/dock.html","/studio.html","/biblioteca.html","/login.html","/remote.html"}
 REMOTE_READ={"/api/state","/api/draft","/api/obs-status","/api/session","/api/events"}
-REMOTE_COMMANDS={"publish","launch","clean","restore","timer_start","timer_pause","timer_reset","social_show","social_hide","logo_toggle"}
+REMOTE_COMMANDS={"publish","launch","clean","restore","timer_start","timer_pause","timer_reset","social_show","social_hide","social_rotation_start","social_rotation_stop","logo_toggle"}
 def persist():
     DATA.write_text(json.dumps({k:v for k,v in draft.items() if k not in ("running","end_at","remaining")},ensure_ascii=False,indent=2),encoding="utf-8")
 def snapshot():
@@ -192,6 +194,8 @@ class Handler(SimpleHTTPRequestHandler):
             self.send_response(200);self.send_header("Content-Type","image/svg+xml");self.send_header("Cache-Control","no-store");self.send_header("Content-Length",str(len(data)));self.end_headers();return self.wfile.write(data)
         if path in ("/api/state","/api/draft"):
             with LOCK:self.respond(snapshot() if path=="/api/state" else copy.deepcopy(draft))
+        elif path=="/api/productions" and not self.remote:
+            self.respond(PRODUCTIONS.snapshot())
         elif path=="/api/obs-config":
             self.respond(OBS_MONITOR.configuration())
         elif path=="/api/obs-diagnostic" and not self.remote:
@@ -248,15 +252,19 @@ class Handler(SimpleHTTPRequestHandler):
                     return self.respond({"error":"No se pudo abrir el puerto LAN: "+str(exc)},409)
                 return self.respond({"ok":True,"config":LAN_ACCESS.details()})
             except (ValueError,TypeError,KeyError) as exc:return self.respond({"error":str(exc)},400)
-        if path not in ("/api/update","/api/logo","/api/image","/api/logo-video","/api/obs-config","/api/obs-detect"):return self.respond({"error":"Ruta inválida"},404)
+        if path not in ("/api/update","/api/productions","/api/logo","/api/image","/api/logo-video","/api/obs-config","/api/obs-detect"):return self.respond({"error":"Ruta inválida"},404)
         try:
             size=int(self.headers.get("Content-Length","0"))
             if size<1 or size>35*1024*1024:raise ValueError("Tamaño inválido")
-            if path in ("/api/obs-config","/api/obs-detect") and size>4096:raise ValueError("Configuración OBS demasiado grande")
+            if path in ("/api/obs-config","/api/obs-detect","/api/productions") and size>16384:raise ValueError("Configuración OBS demasiado grande")
             if self.remote and (path!="/api/update" or size>4096):raise ValueError("Solicitud remota no permitida")
             if self.remote and self.headers.get("Content-Type","").split(";")[0]!="application/json":
                 return self.respond({"error":"Solo se acepta JSON"},415)
             body=self.rfile.read(size)
+            if path=="/api/productions":
+                if self.headers.get("Content-Type","").split(";")[0]!="application/json":
+                    raise ValueError("Solo se acepta JSON para la biblioteca")
+                return self.respond({"ok":True,**PRODUCTIONS.apply(json.loads(body))})
             if path=="/api/obs-config":
                 if self.headers.get("Content-Type","").split(";")[0]!="application/json":
                     raise ValueError("Solo se acepta JSON para conectar OBS")
@@ -302,12 +310,35 @@ class Handler(SimpleHTTPRequestHandler):
                     if draft["mode"]=="incidencia" and data.get("confirm_incidence") is not True:
                         raise ValueError("Confirma expresamente el aviso de dificultades técnicas antes de mostrarlo")
                     for k in EDIT:live[k]=copy.deepcopy(draft[k])
+                    live.pop("library_item",None)
                 elif cmd=="launch":
                     mode=data.get("mode")
                     if mode not in ("espera","participante","lower_third"):raise ValueError("Gráfico no disponible para lanzamiento directo")
                     if mode=="espera" and draft["mode"]!="espera":raise ValueError("Prepara primero la pantalla de espera en el panel")
                     for k in EDIT:live[k]=copy.deepcopy(draft[k])
                     live.update(mode=mode,visible=True)
+                    live.pop("library_item",None)
+                elif cmd=="library_launch":
+                    item=PRODUCTIONS.get_item(data.get("production_id"),data.get("item_id"))
+                    kind=item["type"];payload=item["data"]
+                    if kind=="lower_third":
+                        live["lower_third"]=validated_lower_third({**draft["lower_third"],**payload})
+                        live.update(mode="lower_third",visible=True)
+                    elif kind in ("titulo","lectura","salmo","aviso","frase"):
+                        live.update(mode={"titulo":"cintillo","lectura":"lectura","salmo":"salmo","aviso":"avisos","frase":"cintillo"}[kind],
+                                    title=str(payload.get("title") or payload.get("text") or item["name"])[:180],
+                                    detail=str(payload.get("body",""))[:500],reference="",subtitle="",visible=True)
+                    else:
+                        raise ValueError("Este tipo aún no dispone de lanzamiento individual")
+                    live["library_item"]={"production_id":data.get("production_id"),"item_id":item["id"]}
+                elif cmd=="social_rotation_start":
+                    playlist=PRODUCTIONS.social_playlist(data.get("production_id"))
+                    # Snapshot de la lista: editar la biblioteca no cambia una emisión ya iniciada.
+                    live["social_rotation"]={**playlist,"started_at":time.time()}
+                    live["social_now"]=True
+                elif cmd=="social_rotation_stop":
+                    live["social_rotation"]=None
+                    live["social_now"]=False
                 elif cmd=="social_show":live["social_now"]=True
                 elif cmd=="social_hide":live["social_now"]=False
                 elif cmd=="logo_toggle":live["logo_persistent"]=not live.get("logo_persistent",True)

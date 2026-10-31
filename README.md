@@ -43,6 +43,22 @@ El flujo `.github/workflows/windows-release.yml` compila y prueba el ejecutable,
 
 Si ejecutas desde código fuente (sin EXE) y quieres generar QR, instala una vez `python -m pip install qrcode` antes de iniciar el programa. El EXE Windows incorpora esa dependencia.
 
+## Biblioteca de producciones (primera fase)
+
+Desde el panel principal entra a **Biblioteca de producciones**, o abre `http://127.0.0.1:8765/biblioteca.html`. Permite crear producciones, guardar varios recursos por categoría, editarlos, duplicarlos, habilitarlos/deshabilitarlos, eliminarlos y cambiar su orden. Incluye una producción de ejemplo editable y almacena el catálogo en `%LOCALAPPDATA%\\ProduccionLiturgicaOBS\\producciones.json` (o junto al código en ejecución de desarrollo). No sobrescribe la configuración existente `configuracion.json`.
+
+Los Lower Thirds y los elementos de texto (títulos, lecturas, salmos, avisos y frases) admiten **lanzamiento individual** tanto desde la biblioteca como desde una sección específica del Dock. El diseño de cada Lower Third puede heredar la plantilla guardada en Estudio o personalizarla por elemento (nombre, cargo, plantilla, colores y animaciones). Los ítems sin soporte de lanzamiento siguen siendo **registros preparados**: vídeos, imágenes, créditos y otros formatos necesitan una fase posterior.
+
+### Rotación individual de redes
+En la categoría **Redes sociales** añade tantos ítems como necesites. Cada registro tiene nombre, plataforma, usuario/enlace, frase e icono de la red. Puedes sustituir el icono por un PNG/JPG/WEBP propio desde el panel local. La lista incluye ejemplos editables; no se exige conectar cuentas externas.
+
+Configura la duración visible (3 a 30 segundos), intervalo entre inicios (hasta 900 segundos), repetición y ubicación (espera, directo, cierre o todos). Pulsa **Iniciar rotación** en Biblioteca o Dock. La salida muestra **solo una red por turno**, nunca toda la lista simultáneamente. Pulsa **Detener rotación** para ocultar las redes. Una rotación ya iniciada conserva la lista original hasta que la reinicies; las ediciones no alteran inadvertidamente el contenido en directo.
+
+### Vista previa fiel a la salida OBS
+El panel web, el Estudio y la Biblioteca emplean **el mismo motor HTML/CSS de `overlay.html`**, con un marco de 1920 × 1080 reducido proporcionalmente. La vista previa recibe una configuración local aislada y **no cambia el gráfico publicado**, ni depende de que OBS esté transmitiendo. Para comparar, configura la Fuente de navegador de OBS a 1920 × 1080 y sin CSS personalizado que altere el tamaño. Diferencias menores pueden deberse a las fuentes y a la versión de Chromium integrada en OBS.
+
+El indicador **AL AIRE** continúa dependiendo de OBS WebSocket: un dibujo en la vista previa no confirma que el gráfico esté en Programa ni que se esté transmitiendo. La prueba visual en OBS real sigue pendiente.
+
 ## Biblioteca de gráficos y Dock
 
 - **Editor de Lower Thirds:** `http://127.0.0.1:8765/studio.html`, o el acceso desde el panel. Permite elegir Clásica, Minimalista, Litúrgica o Moderna, editar nombre/cargo/subtítulo, colores, opacidad y animaciones. «Probar entrada/salida» solo modifica la vista previa del editor.

@@ -48,6 +48,8 @@ body[data-ui-level=essential] .tier-custom,body[data-ui-level=essential] .tier-a
 button.danger{background:#b33e4b;color:white}button:disabled{opacity:.65;cursor:wait}
 .back-link{display:inline-flex;align-items:center;background:#344961;color:#fff;text-decoration:none;border-radius:7px;padding:10px 12px;font-weight:650;margin-bottom:15px}.back-link:hover{background:#435d7a}.back-link:focus-visible{outline:3px solid #d7b97d;outline-offset:2px}
 @media(max-width:750px){.wrap{grid-template-columns:1fr}.stage{min-height:250px}}
+.stage iframe{position:absolute;top:0;left:0;width:1920px;height:1080px;border:0;transform-origin:top left;transform:scale(.04);pointer-events:none}
+.stage{background:#17212e}
 </style></head><body>
 <a href="/panel.html" class="back-link">← Volver al panel principal</a>
 <h1>Biblioteca de Lower Thirds</h1><p>Diseña cintillos reutilizables para cualquier parroquia o comunidad. Los cambios se preparan primero y solo aparecen en OBS al pulsar «Publicar en OBS».</p>
@@ -68,8 +70,8 @@ button.danger{background:#b33e4b;color:white}button:disabled{opacity:.65;cursor:
 <button id="reset" class="alt">Recuperar estilo predeterminado</button>
 <div id="feedback" class="hint" role="status"></div>
 </div>
-<div class="preview"><div class="stage"><div class="mock"></div><div class="floor"></div><div class="lower classic" id="lower"><div class="panel"><div class="kicker" id="outRole">Celebrante</div><div class="name" id="outName">P. Nombre del celebrante</div><div class="subtitle" id="outSubtitle">Parroquia / comunidad</div></div></div></div>
-<div class="badge">Vista previa 16:9 · Control independiente de entrada y salida</div>
+<div class="preview"><div class="stage" id="previewStage"><iframe id="obsPreview" src="/overlay.html?preview=1" title="Vista previa real del gráfico en OBS" sandbox="allow-scripts allow-same-origin"></iframe></div>
+<div class="badge">Vista previa fiel a OBS · 1920 × 1080 (escala proporcional) · no modifica la transmisión</div>
 <div class="hint">Las transiciones son animaciones del gráfico, no cambios de cámara de OBS. Para momentos como la plegaria eucarística se recomienda imagen limpia y movimiento mínimo.</div></div></div>
 <script>
 'use strict';
@@ -77,17 +79,31 @@ const ids=['template','enter','exit','duration','opacity','background','accent',
 const $=id=>document.getElementById(id);
 const defaults={template:'classic',enter:'fade',exit:'fade',duration:650,opacity:94,background:'#152941',accent:'#D6B678',name:'Nombre del participante',role:'Participante',subtitle:''};
 function settings(){const out=Object.fromEntries(ids.map(id=>[id,$(id).value]));out.duration=Math.max(150,Math.min(2500,Number(out.duration)||650));out.opacity=Math.max(25,Math.min(100,Number(out.opacity)||94));return out}
-function render(){
- const s=settings(),el=$('lower');el.classList.remove('classic','minimal','liturgical','modern');el.classList.add(s.template);
- el.style.setProperty('--bg',s.background);el.style.setProperty('--accent',s.accent);el.style.setProperty('--opacity',Math.max(.25,Math.min(1,Number(s.opacity)/100)));
- el.style.setProperty('--dur',Math.max(150,Math.min(2500,Number(s.duration)))+'ms');
- $('outName').textContent=s.name||'Nombre';$('outRole').textContent=s.role||'Cargo';$('outSubtitle').textContent=s.subtitle||'';
+let draftForPreview={mode:'lower_third',visible:true,parish_name:'Mi parroquia'};
+let frameReady=false,previewPhase='update';
+function scalePreview(){
+ const stage=$('previewStage'),frame=$('obsPreview');
+ frame.style.transform='scale('+(stage.clientWidth/1920)+')';
 }
-function animate(phase){
- render();const el=$('lower'),key=phase==='enter'?'enter':'exit',s=settings(),kind=s[key];
- el.classList.remove('enter','leave','fade','left','right','rise','zoom','none');void el.offsetWidth;
- el.classList.add(phase==='enter'?'enter':'leave',kind);
+function currentPreviewState(){
+ return {...draftForPreview,mode:'lower_third',visible:true,
+         social_enabled:false,social_during_mass:false,social_now:false,
+         lower_third:settings()};
 }
+function sendPreview(phase='update'){
+ if(!frameReady||location.origin==='null')return;
+ $('obsPreview').contentWindow.postMessage({type:'plobs-preview',phase,state:currentPreviewState()},location.origin);
+}
+function render(){sendPreview()}
+function animate(phase){sendPreview(phase)}
+window.addEventListener('message',event=>{
+ if(event.origin===location.origin&&event.source===$('obsPreview').contentWindow&&event.data?.type==='plobs-preview-ready'){
+  frameReady=true;scalePreview();sendPreview('enter');
+ }
+});
+$('obsPreview').addEventListener('load',()=>{scalePreview();if(location.origin!=='null')$('obsPreview').contentWindow.postMessage({type:'plobs-preview-ping'},location.origin);sendPreview('enter')});
+scalePreview();if(typeof ResizeObserver!=='undefined')new ResizeObserver(scalePreview).observe($('previewStage'));
+window.addEventListener('resize',scalePreview);
 ids.forEach(id=>$(id).addEventListener('input',render));
 $('show').onclick=()=>animate('enter');$('hide').onclick=()=>animate('leave');
 function feedback(text,error=false){$('feedback').textContent=text;$('feedback').style.color=error?'#ffc8bd':'#a8e5c6'}
@@ -101,7 +117,7 @@ $('clean').onclick=async()=>{try{await command('clean');feedback('Imagen limpia 
 $('restore').onclick=async()=>{try{await command('restore');feedback('Gráfico restaurado.');await status()}catch(e){feedback(e.message,true)}};
 $('reset').onclick=()=>{for(const id of ids)$(id).value=defaults[id];render();feedback('Valores predeterminados cargados en el editor. Guarda o publica para aplicarlos.')};
 async function status(){try{const r=await fetch('/api/state',{cache:'no-store'});if(!r.ok)throw Error();const s=await r.json();$('obsStatus').classList.remove('error');$('obsStatus').textContent=s.visible===false?'Salida gráfica: imagen limpia':s.mode==='lower_third'?'Salida gráfica: Lower Third visible':'Salida gráfica: gráfico visible ('+(s.mode||'—')+')'}catch(e){$('obsStatus').textContent='Servidor local desconectado. Inicia la aplicación local.';$('obsStatus').classList.add('error')}}
-async function initialize(){try{const r=await fetch('/api/draft',{cache:'no-store'});if(!r.ok)throw Error();const d=await r.json();for(const id of ids)if(d.lower_third&&Object.hasOwn(d.lower_third,id))$(id).value=d.lower_third[id]}catch(e){feedback('No se pudo recuperar la preparación. Revisa la conexión.',true)}render();animate('enter');await status()}
+async function initialize(){try{const r=await fetch('/api/draft',{cache:'no-store'});if(!r.ok)throw Error();const d=await r.json();draftForPreview=d;for(const id of ids)if(d.lower_third&&Object.hasOwn(d.lower_third,id))$(id).value=d.lower_third[id]}catch(e){feedback('No se pudo recuperar la preparación. Revisa la conexión.',true)}render();animate('enter');await status()}
 const levels=['essential','custom','advanced'];function setLevel(level){if(!levels.includes(level))level='essential';document.body.dataset.uiLevel=level;document.querySelectorAll('[data-level]').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.level===level)));try{localStorage.setItem('liturgia-ui-level',level)}catch(e){}}
 document.querySelectorAll('[data-level]').forEach(button=>button.onclick=()=>setLevel(button.dataset.level));let savedLevel='essential';try{savedLevel=localStorage.getItem('liturgia-ui-level')||savedLevel}catch(e){}setLevel(savedLevel);
 initialize();setInterval(status,1500);

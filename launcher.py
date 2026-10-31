@@ -17,7 +17,7 @@ APP_DIR = (Path(os.environ.get("LOCALAPPDATA") or Path.home()) / "ProduccionLitu
 APP_DIR.mkdir(parents=True, exist_ok=True)
 RES_DIR = Path(getattr(sys, "_MEIPASS", APP_DIR))
 os.environ["LITURGIA_APP_DIR"] = str(APP_DIR)
-for filename in ("panel.html", "overlay.html", "dock.html", "studio.html", "login.html", "remote.html"):
+for filename in ("panel.html", "overlay.html", "dock.html", "studio.html", "biblioteca.html", "login.html", "remote.html"):
     destination = APP_DIR / filename
     source = RES_DIR / filename
     if source.exists() and source.resolve() != destination.resolve():

@@ -57,3 +57,20 @@ Entorno: Windows, navegador Chromium/Edge y dock de OBS cuando esté integrado.
 - [ ] Comprobar el remoto en el teléfono real, en vertical/horizontal y con textos largos.
 - [ ] Revisar teclado/foco y uso con zoom del navegador en el panel.
 - Estas pruebas simuladas no certifican la salida real de OBS ni reemplazan la validación del dispositivo.
+
+## Biblioteca de producción, redes y vista previa real (PR #8)
+
+- [ ] En **Biblioteca de producciones**, crear una producción, agregar tres Lower Thirds, editarlos, duplicarlos, reordenarlos y desactivar uno. Verificar que el Dock solo permite lanzar los habilitados.
+- [ ] Confirmar que guardar o editar elementos no modifica la emisión hasta pulsar **Lanzar**.
+- [ ] Comparar **Estudio → Vista previa** con la Fuente de navegador OBS configurada a **1920 × 1080**: plantilla, colores, nombre, posiciones y tamaño. Las animaciones de entrada y salida deben usar el mismo motor.
+- [ ] Comparar **Biblioteca → Vista previa** con OBS para Lower Thirds, lectura, avisos, frases y redes. No confundir vista previa local con una salida publicada.
+- [ ] Verificar que el marco de vista previa conserva 16:9 al cambiar tamaño y en teléfono, sin cortar texto ni estirar elementos.
+- [ ] Probar que la vista previa NO llama a `/api/update`, no altera `/api/state` y no detiene los gráficos activos.
+- [ ] En la biblioteca social, cargar PNG/JPG/WEBP personalizado en una red, guardarlo, volver a abrir la edición y comprobar que persiste. El icono de la plataforma debe aparecer cuando no exista logo personalizado.
+- [ ] Configurar tres redes distintas con frases individuales como «Síguenos», «Dale like y comparte» y «Estamos en vivo», e iniciar rotación desde panel y Dock.
+- [ ] Confirmar que solo aparece UNA red a la vez, respetando duración, intervalo, orden y ubicación (espera/directo/cierre). Comprobar modo sin repetición.
+- [ ] Cambiar de gráfico durante la rotación: el contenido debe continuar sin tapar los Lower Thirds.
+- [ ] Detener la rotación desde el Dock y comprobar desaparición sin interrumpir la transmisión.
+- [ ] Con OBS en programa, distinguir **EN PROGRAMA** de **AL AIRE**; no atribuir a un ítem un estado confirmado si la fuente no está activa o WebSocket no responde.
+- [ ] Cerrar y reabrir el programa: comprobar persistencia de producciones, logos y ajustes de rotación.
+- [ ] Comprobar la salida real dentro de OBS y, si difiere del navegador, revisar tamaño de Fuente de navegador (1920 × 1080), zoom y fuentes instaladas. Los motores Chromium de OBS y del navegador pueden presentar pequeñas diferencias de tipografía.
