@@ -18,28 +18,82 @@ button:disabled{opacity:.45;cursor:not-allowed}button.secondary{background:#3547
 .links{display:flex;gap:8px;flex-wrap:wrap}.links a{background:#35475c;color:white;text-decoration:none;border-radius:7px;padding:10px 11px;font-weight:600;flex:1;text-align:center;white-space:nowrap}
 #feedback{min-height:17px;color:#dfc38d;font-size:11px;margin:8px 2px}
 .air-box{background:#101c2b;border:1px solid #344c63;border-radius:9px;padding:12px;margin:0 0 12px}.air-box .head{display:flex;justify-content:space-between;align-items:center;gap:8px}.air-box strong{font-size:14px}.air-box small{display:block;color:#b5c4d5;margin-top:6px;line-height:1.4}.air-badge{font-size:11px;font-weight:800;letter-spacing:.035em;border-radius:6px;padding:7px 9px;background:#3d4756;color:white;white-space:nowrap}.air-badge.onair{background:#a93636;color:#fff}.air-badge.program{background:#176b4c;color:#fff}.air-badge.hidden{background:#526071}.air-badge.unknown{background:#8b6e34;color:#fff}.graphic.active{background:#142b37;border-left:3px solid #2eba88;padding-left:8px}.graphic-state{font-size:10px;color:#7de0b0;margin-left:5px}
+
+/* Reflow with the OBS dock viewport, including narrow vertical docks. */
+body{overflow-wrap:anywhere}
+header,.air-box .head{flex-wrap:wrap}
+header>*,.air-box .head>*,.graphic>*,section{min-width:0}
+button,.links a{white-space:normal;overflow-wrap:anywhere;min-height:40px}
+.links a{min-width:0;flex-basis:130px}
+.air-badge{white-space:normal}
+@media(max-width:360px){
+  body{padding:8px}
+  section,.air-box{padding:10px}
+  .graphic{grid-template-columns:minmax(0,1fr)}
+  .graphic>button{width:100%}
+}
+@media(max-width:260px){
+  .buttons{grid-template-columns:minmax(0,1fr)}
+  .links{flex-direction:column}
+  .links a{flex-basis:auto}
+}
+
+.live-controls{position:sticky;top:0;z-index:10;background:#17212e;padding-top:4px}
+.live-controls .air-box{margin-bottom:6px}
+.output-controls{margin-bottom:4px}
+.output-controls details{margin-bottom:8px}
+summary{cursor:pointer;font-weight:700;line-height:1.5}
+summary:focus-visible{outline:3px solid #d6b678;outline-offset:3px}
+details[open]>summary{margin-bottom:12px}
+@media(max-height:600px){.live-controls{position:static}}
+#feedback:empty{min-height:0;margin:0}
+
+/* Wide docks use distinct work areas instead of stretching a mobile column. */
+body{max-width:1320px;margin-inline:auto}
+.dock-layout>*{min-width:0}
+@media(min-width:760px){
+ body{padding:20px}
+ .dock-layout{display:grid;grid-template-columns:minmax(260px,.9fr) minmax(0,1.6fr);gap:14px;align-items:start;
+ grid-template-areas:"live launch" "timer launch" "aux launch" "links links"}
+ .live-controls{grid-area:live;position:static;padding:0}
+ .launch-section{grid-area:launch}
+ .timer-section{grid-area:timer}
+ .aux-section{grid-area:aux}
+ .links{grid-area:links;justify-content:flex-end}
+ .links a{flex:0 1 200px}
+ .dock-layout>section{margin:0}
+}
+@media(min-width:1100px){
+ .launch-section{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+ .launch-section>h2,.launch-section>.hint{grid-column:1/-1}
+ .launch-section>h2{margin-bottom:0}
+ .graphic,.graphic:first-of-type{display:flex;flex-direction:column;align-items:stretch;justify-content:space-between;gap:16px;
+ padding:14px;border:1px solid #3c4b5d;border-radius:8px;min-height:142px}
+ .graphic.active{border:1px solid #2eba88;padding:14px}
+ .graphic>button{align-self:flex-start;min-width:100px}
+}
 </style></head><body>
 <header><h1>Producción Litúrgica · Control gráfico</h1><span class="status" id="status">Conectando…</span></header>
-<div class="air-box" role="status" aria-live="polite"><div class="head"><strong>Estado del gráfico en OBS</strong><span class="air-badge unknown" id="airBadge">SIN VERIFICAR</span></div><div id="airGraphic" style="margin-top:8px;font-size:13px;font-weight:700">Consultando…</div><small id="airDetail">La conexión con OBS permite confirmar qué aparece en programa.</small></div>
-<section><h2>Estado de la salida gráfica</h2><div class="live" id="liveSummary">Consultando…</div>
-<div class="buttons"><button id="clean" class="danger">Imagen limpia</button><button id="restore" class="secondary">Restaurar gráfico</button></div></section>
-<section><h2>Lanzar gráficos preparados</h2>
+<main class="dock-layout"><div class="live-controls"><div class="air-box" role="status" aria-live="polite"><div class="head"><strong>Estado del gráfico en OBS</strong><span class="air-badge unknown" id="airBadge">SIN VERIFICAR</span></div><div id="airGraphic" style="margin-top:8px;font-size:13px;font-weight:700">Consultando…</div><small id="airDetail">La conexión con OBS permite confirmar qué aparece en programa.</small></div>
+<section class="output-controls"><details><summary>Detalle de la salida gráfica</summary><div class="live" id="liveSummary">Consultando…</div></details>
+<div class="buttons"><button id="clean" class="danger">Imagen limpia</button><button id="restore" class="secondary">Restaurar gráfico</button></div></section><div id="feedback" role="status" aria-live="polite"></div></div>
+<section class="launch-section"><h2>Lanzar gráficos preparados</h2>
 <div class="graphic" id="graphicPrepared"><div><strong>Gráfico del panel <span class="graphic-state" id="statePrepared"></span></strong><small id="preparedSummary">Cargando preparación…</small></div><button id="launchPrepared">Lanzar</button></div>
 <div class="graphic" id="graphicLower"><div><strong>Lower Third <span class="graphic-state" id="stateLower"></span></strong><small id="lowerSummary">Cargando estilo…</small></div><button id="launchLower" class="secondary">Lanzar</button></div>
 <div class="graphic" id="graphicPerson"><div><strong>Identificación de participante <span class="graphic-state" id="statePerson"></span></strong><small id="personSummary">Cargando participantes…</small></div><button id="launchPerson" class="secondary">Lanzar</button></div>
 <div class="graphic" id="graphicWait"><div><strong>Pantalla de espera <span class="graphic-state" id="stateWait"></span></strong><small id="waitSummary">Cuenta regresiva y avisos preparados en el panel</small></div><button id="launchWait" class="secondary">Lanzar</button></div>
 <p class="hint">El Dock lanza gráficos y verifica su estado en OBS; no modifica la configuración. Los nombres, diseños y textos se editan en el panel web o en el Estudio.</p></section>
-<section><h2>Cuenta regresiva</h2><div class="timer" id="timer">15:00</div>
+<section class="timer-section"><h2>Cuenta regresiva</h2><div class="timer" id="timer">15:00</div>
 <div class="buttons"><button id="timerStart">Iniciar</button><button id="timerPause" class="secondary">Pausar</button><button id="timerReset" class="secondary">Reiniciar</button></div></section>
-<section><h2>Elementos auxiliares</h2>
+<section class="aux-section"><details><summary>Logo y redes sociales</summary>
 <div class="buttons"><button id="logo" class="secondary">Mostrar/quitar logo</button><button id="social" class="secondary">Mostrar redes</button></div>
-<button id="hideSocial" class="secondary" style="margin-top:7px;width:100%">Ocultar redes</button></section>
+<button id="hideSocial" class="secondary" style="margin-top:7px;width:100%">Ocultar redes</button></details></section>
 <div class="links"><a href="/panel.html" target="_blank" rel="noopener">Abrir panel web</a><a href="/studio.html" target="_blank" rel="noopener">Abrir Estudio</a></div>
-<div id="feedback" role="status" aria-live="polite"></div>
+</main>
 <script>
 'use strict';
 const $=id=>document.getElementById(id),modeNames={espera:'Espera y cuenta regresiva',cintillo:'Cintillo general',lectura:'Lectura',salmo:'Salmo responsorial',evangelio:'Evangelio',homilia:'Homilía',ofertorio:'Ofertorio',comunion:'Comunión',avisos:'Avisos',cierre:'Cierre',incidencia:'Aviso técnico',participante:'Participante',lower_third:'Lower Third personalizado',limpio:'Imagen limpia'};
-let live=null,draft=null,obs=null,connected=false;
+let live=null,draft=null,obs=null,connected=false,refreshing=false;const pendingControls=new Set();
 const airStates={al_aire:['● AL AIRE','onair','OBS transmite y la fuente de este gráfico está activa en programa.'],en_programa:['EN PROGRAMA','program','El gráfico está en el programa de OBS; la transmisión no está activa.'],fuera_de_programa:['FUERA DE PROGRAMA','hidden','La fuente configurada no está activa en la salida de programa de OBS.'],imagen_limpia:['IMAGEN LIMPIA','hidden','No hay gráfico publicado en la salida local.'],sin_verificar:['SIN VERIFICAR','unknown','No se ha confirmado que el gráfico esté en programa. Configura OBS en el panel web.']};
 async function fetchJSON(url,options={},allowStatusError=false){const response=await fetch(url,{cache:'no-store',...options});const data=await response.json();if(!response.ok||(!allowStatusError&&data.error))throw Error(data.error||'Error del servidor ('+response.status+')');return data}
 async function command(name,extra={}){return fetchJSON('/api/update',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({command:name,...extra})})}
@@ -48,7 +102,7 @@ function preparedTitle(s){if(!s)return '';return s.mode==='lower_third'?(s.lower
 function participantName(s){const role=s?.role||'celebrante',entry=s?.participants?.[role],people=Array.isArray(entry)?entry:[entry||''];return people[Math.min(Math.max(Number(s.role_index)||0,0),people.length-1)]||''}
 function render(){
  $('status').textContent=connected?'Servidor local conectado':'Sin conexión';$('status').classList.toggle('ok',connected);
- const controls=document.querySelectorAll('button');controls.forEach(button=>button.disabled=!connected);
+ const controls=document.querySelectorAll('button');controls.forEach(button=>button.disabled=!connected||pendingControls.has(button));
  if(!connected){$('liveSummary').textContent='Sin conexión con el servidor local.';$('airBadge').textContent='SIN VERIFICAR';$('airBadge').className='air-badge unknown';$('airGraphic').textContent='Sin conexión';$('airDetail').textContent='Revisa el servidor local.';return}
  const mode=live?.visible===false?'limpio':live?.mode||'limpio';
  $('liveSummary').textContent=(modeNames[mode]||mode)+'\n'+(mode==='limpio'?'Salida gráfica oculta':preparedTitle(live));
@@ -68,9 +122,9 @@ function render(){
  if(!readyToWait)$('launchWait').disabled=true;
  $('timer').textContent=String(Math.floor((live?.remaining||0)/60)).padStart(2,'0')+':'+String((live?.remaining||0)%60).padStart(2,'0');
 }
-async function refresh(){try{[live,draft,obs]=await Promise.all([fetchJSON('/api/state'),fetchJSON('/api/draft'),fetchJSON('/api/obs-status',{},true)]);connected=true;render()}catch(error){connected=false;obs=null;render();tell('No se pudo consultar el servidor local.',true)}}
+async function refresh(){if(refreshing)return;refreshing=true;try{[live,draft,obs]=await Promise.all([fetchJSON('/api/state'),fetchJSON('/api/draft'),fetchJSON('/api/obs-status',{},true)]);connected=true;render()}catch(error){connected=false;obs=null;render();tell('No se pudo consultar el servidor local.',true)}finally{refreshing=false}}
 async function perform(action,description){try{await action();tell(description);await refresh()}catch(error){tell(error.message,true)}}
-$('launchPrepared').onclick=()=>{const incident=draft?.mode==='incidencia';if(incident&&!confirm('¿Mostrar el aviso de dificultades técnicas en la salida gráfica?'))return;perform(()=>command('publish',{confirm_incidence:incident}),'Gráfico preparado enviado a la salida.');};
+$('launchPrepared').onclick=()=>{const incident=draft?.mode==='incidencia';if(incident&&!confirm('¿Mostrar el aviso de dificultades técnicas en la salida gráfica?'))return;return perform(()=>command('publish',{confirm_incidence:incident}),'Gráfico preparado enviado a la salida.');};
 $('launchLower').onclick=()=>perform(()=>command('launch',{mode:'lower_third'}),'Lower Third enviado a la salida.');
 $('launchPerson').onclick=()=>perform(()=>command('launch',{mode:'participante'}),'Identificación enviada a la salida.');
 $('launchWait').onclick=()=>perform(()=>command('launch',{mode:'espera'}),'Pantalla de espera enviada a la salida.');
@@ -82,5 +136,12 @@ $('timerReset').onclick=()=>perform(()=>command('timer_reset'),'Cuenta regresiva
 $('logo').onclick=()=>perform(()=>command('logo_toggle'),'Visibilidad del logo actualizada.');
 $('social').onclick=()=>perform(()=>command('social_show'),'Redes sociales activadas.');
 $('hideSocial').onclick=()=>perform(()=>command('social_hide'),'Redes sociales ocultadas.');
+document.querySelectorAll('button').forEach(button=>{
+ const handler=button.onclick;if(!handler)return;
+ button.onclick=async()=>{if(button.disabled||pendingControls.has(button))return;
+ pendingControls.add(button);render();
+ try{await handler()}finally{pendingControls.delete(button);render()}
+ };
+});
 refresh();setInterval(refresh,1500);
 </script></body></html>

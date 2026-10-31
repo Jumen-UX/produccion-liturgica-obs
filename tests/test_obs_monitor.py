@@ -8,12 +8,14 @@ import struct
 import tempfile
 import threading
 import unittest
+from unittest.mock import MagicMock, patch
 from pathlib import Path
 
 import sys
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from obs_monitor import OBSMonitor, OBSWebSocket, graphic_state
+from obs_monitor import (OBSAuthRejected, OBSAuthRequired, OBSMonitor,
+                         OBSProtocolIncompatible, OBSWebSocket, graphic_state)
 
 
 class FakeOBS(socketserver.BaseRequestHandler):
@@ -78,6 +80,128 @@ class FakeOBS(socketserver.BaseRequestHandler):
 
 
 class OBSMonitorTests(unittest.TestCase):
+
+    def test_monitor_reuses_socket_and_diagnostic_confirmation(self):
+        with tempfile.TemporaryDirectory() as directory:
+            monitor = OBSMonitor(Path(directory) / "obs.json", start_worker=False)
+            monitor.configure({"source_name": "Navegador 2"})
+            client = MagicMock()
+            client.request.side_effect = lambda name, data=None: (
+                {"outputActive": True} if name == "GetStreamStatus" else {"videoActive": True})
+            with patch("obs_monitor.OBSWebSocket", return_value=client) as connect:
+                for _ in range(4):
+                    monitor._poll_once()
+                    self.assertEqual(monitor.diagnostic()["state"], "ready")
+                connect.assert_called_once()
+                client.close.assert_not_called()
+                self.assertEqual(client.request.call_count, 8)
+                self.assertTrue(monitor.get_status()["connected"])
+            monitor._close_client()
+
+    def test_monitor_reconnects_after_failure_and_configuration_change(self):
+        with tempfile.TemporaryDirectory() as directory:
+            monitor = OBSMonitor(Path(directory) / "obs.json", start_worker=False)
+            monitor.configure({"source_name": "Navegador 2"})
+            first, second, third = MagicMock(), MagicMock(), MagicMock()
+            for client in (first, second, third):
+                client.request.side_effect = lambda name, data=None: (
+                    {"outputActive": True} if name == "GetStreamStatus" else {"videoActive": True})
+            with patch("obs_monitor.OBSWebSocket", side_effect=[first, second, third]) as connect:
+                monitor._poll_once()
+                first.request.side_effect = OSError("Conexión interrumpida")
+                monitor._poll_once()
+                self.assertFalse(monitor.get_status()["connected"])
+                self.assertIsNone(monitor.get_status()["streaming"])
+                first.close.assert_called_once()
+                monitor._poll_once()
+                self.assertTrue(monitor.get_status()["connected"])
+                monitor.configure({"port": 4456, "source_name": "Otra fuente", "password": "nueva"})
+                monitor._poll_once()
+                second.close.assert_called_once()
+                connect.assert_called_with(4456, "nueva")
+                self.assertEqual(connect.call_count, 3)
+                monitor.configure({"source_name": ""})
+                monitor._poll_once()
+                third.close.assert_called_once()
+                self.assertFalse(monitor.get_status()["connected"])
+            monitor._close_client()
+
+    def test_stale_confirmation_is_not_reused_by_diagnostic(self):
+        with tempfile.TemporaryDirectory() as directory:
+            monitor = OBSMonitor(Path(directory) / "obs.json", start_worker=False)
+            monitor.status.update(connected=True, checked_at=1)
+            with patch("obs_monitor.OBSWebSocket", side_effect=ConnectionRefusedError):
+                self.assertEqual(monitor.diagnostic()["state"], "unavailable")
+
+    def test_websocket_diagnostic_works_before_source_configuration(self):
+        with tempfile.TemporaryDirectory() as directory:
+            monitor = OBSMonitor(Path(directory) / "conexion_obs.json", start_worker=False)
+            client = MagicMock()
+            with patch("obs_monitor.OBSWebSocket", return_value=client) as socket_client:
+                result = monitor.diagnostic()
+            self.assertEqual(result, {"state": "ready", "port": 4455,
+                                      "source_configured": False})
+            socket_client.assert_called_once_with(4455, "")
+            client.close.assert_called_once()
+
+    def test_websocket_diagnostic_distinguishes_failure_modes_without_secrets(self):
+        with tempfile.TemporaryDirectory() as directory:
+            monitor = OBSMonitor(Path(directory) / "conexion_obs.json", start_worker=False)
+            failures = (
+                (OBSAuthRequired("password required"), "password_required"),
+                (OBSAuthRejected("password rejected"), "auth_failed"),
+                (OBSProtocolIncompatible("old protocol"), "incompatible"),
+                (ConnectionRefusedError("OBS not running"), "unavailable"),
+            )
+            for failure, expected in failures:
+                with self.subTest(state=expected), patch("obs_monitor.OBSWebSocket", side_effect=failure):
+                    result = monitor.diagnostic()
+                self.assertEqual(result["state"], expected)
+                self.assertNotIn("password", result)
+                self.assertNotIn("OBS not running", str(result))
+
+    def test_detects_only_our_browser_source_without_changing_configuration(self):
+        with tempfile.TemporaryDirectory() as directory:
+            monitor = OBSMonitor(Path(directory) / "conexion_obs.json", start_worker=False)
+            client = MagicMock()
+
+            def respond(command, data=None):
+                if command == "GetInputList":
+                    return {"inputs": [
+                        {"inputName": "Logo", "inputKind": "image_source"},
+                        {"inputName": "Gráficos", "inputKind": "browser_source"},
+                        {"inputName": "Noticias", "inputKind": "browser_source"},
+                    ]}
+                if data["inputName"] == "Gráficos":
+                    return {"inputSettings": {"url": "http://127.0.0.1:8765/overlay.html"}}
+                return {"inputSettings": {"url": "https://example.org"}}
+
+            client.request.side_effect = respond
+            with patch("obs_monitor.OBSWebSocket", return_value=client) as websocket:
+                result = monitor.detect_graphic_sources(4455, "clave temporal")
+            self.assertEqual(result, {"matches": ["Gráficos"], "port": 4455})
+            self.assertFalse(monitor.configuration()["has_password"])
+            self.assertEqual(monitor.configuration()["source_name"], "")
+            websocket.assert_called_once_with(4455, "clave temporal")
+            self.assertEqual([call.args[0] for call in client.request.call_args_list],
+                             ["GetInputList", "GetInputSettings", "GetInputSettings"])
+            client.close.assert_called_once()
+
+    def test_detection_does_not_guess_when_two_browser_sources_match(self):
+        with tempfile.TemporaryDirectory() as directory:
+            monitor = OBSMonitor(Path(directory) / "conexion_obs.json", start_worker=False)
+            client = MagicMock()
+            client.request.side_effect = lambda command, data=None: (
+                {"inputs": [{"inputName": "A", "inputKind": "browser_source"},
+                            {"inputName": "B", "inputKind": "browser_source"}]}
+                if command == "GetInputList" else
+                {"inputSettings": {"url": "http://localhost:8765/overlay.html?test=1"}}
+            )
+            with patch("obs_monitor.OBSWebSocket", return_value=client):
+                result = monitor.detect_graphic_sources()
+            self.assertEqual(result["matches"], ["A", "B"])
+            self.assertFalse(monitor.configuration()["source_name"])
+
     def test_graphic_status_never_claims_air_without_obs_confirmation(self):
         graphic = {"visible": True, "mode": "lectura"}
         status = {"configured": True, "connected": True, "source_active": True, "streaming": True}

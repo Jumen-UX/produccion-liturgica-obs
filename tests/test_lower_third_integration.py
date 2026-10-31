@@ -249,8 +249,12 @@ class LowerThirdIntegrationTests(unittest.TestCase):
             self.assertIn(control, pages["panel.html"].ids)
         for control in ("mobileClean", "mobileRestore", "mobileLiveState"):
             self.assertIn(control, pages["panel.html"].ids)
-        for control in ("obsSettings", "obsConnect", "obs_source_name", "liveState", "onAirGraphic"):
+        for control in ("obsSettings", "obsConnect", "obsDetect", "obs_source_name", "liveState", "onAirGraphic",
+                        "lanSettings", "lanConnect", "lanQr", "lanQrStatus"):
             self.assertIn(control, pages["panel.html"].ids)
+        panel = (Path(__file__).resolve().parents[1] / "panel.html").read_text(encoding="utf-8")
+        self.assertIn('<section class="card" id="obsSettings">', panel)
+        self.assertIn('<section class="card" id="lanSettings">', panel)
         for control in ("airBadge", "airGraphic", "statePrepared", "stateLower", "statePerson", "stateWait"):
             self.assertIn(control, pages["dock.html"].ids)
         self.assertNotIn("template", pages["panel.html"].ids)

@@ -2,7 +2,7 @@ name: Windows · compilar y distribuir
 
 on:
   pull_request:
-    branches: [main]
+    branches: [main, feature/graphics-live-integration]
   push:
     tags:
       - 'v*'
@@ -17,24 +17,37 @@ jobs:
     timeout-minutes: 35
     steps:
       - name: Obtener el código
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7.0.1
 
       - name: Instalar Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7.1.0
         with:
           python-version: '3.12'
+
+      - name: Instalar Node para pruebas del panel
+        uses: actions/setup-node@v7.1.0
+        with:
+          node-version: '22'
+
+      - name: Probar formulario LAN y sintaxis JavaScript
+        shell: pwsh
+        run: node --test tests/test_lan_panel.cjs
+
+      - name: Probar interfaces adaptativas en Chromium
+        shell: pwsh
+        run: node tests/test_responsive_interfaces.cjs
 
       - name: Probar el código Python
         shell: pwsh
         run: |
-          python -m compileall -q launcher.py servidor.py
+          python -m pip install --disable-pip-version-check pyinstaller pystray pillow qrcode
+          python -m compileall -q launcher.py servidor.py lan_access.py obs_monitor.py
           python -m unittest discover -s tests -p 'test_*.py' -v
-          python -m pip install --disable-pip-version-check pyinstaller pystray pillow
 
       - name: Compilar ejecutable portátil
         shell: pwsh
         run: |
-          pyinstaller --noconfirm --clean --onefile --windowed --name ProduccionLiturgicaOBS --add-data "panel.html;." --add-data "overlay.html;." --add-data "dock.html;." --add-data "studio.html;." --hidden-import pystray._win32 launcher.py
+          pyinstaller --noconfirm --clean --onefile --windowed --name ProduccionLiturgicaOBS --add-data "panel.html;." --add-data "overlay.html;." --add-data "dock.html;." --add-data "studio.html;." --add-data "login.html;." --add-data "remote.html;." --hidden-import pystray._win32 launcher.py
           if (!(Test-Path "dist/ProduccionLiturgicaOBS.exe")) { throw "No se generó el ejecutable" }
 
       - name: Probar inicio y servidor HTTP
@@ -85,8 +98,15 @@ jobs:
           & $iscc "/DMyAppVersion=$version" "installer/windows.iss"
           if ($LASTEXITCODE -ne 0) { throw "Falló el instalador" }
 
+      - name: Verificar actualización y conservación de datos
+        shell: pwsh
+        run: |
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          $version = "${{ github.ref_type == 'tag' && github.ref_name || '0.1.0-dev' }}"
+          ./tests/verify_windows_upgrade.ps1 -IsccPath $iscc -CurrentInstaller "dist/installer/ProduccionLiturgicaOBS-Setup.exe" -CurrentVersion $version
+
       - name: Subir compilados para revisión
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7.0.2
         with:
           name: produccion-liturgica-obs-windows
           path: |
@@ -102,7 +122,7 @@ jobs:
       contents: write
     steps:
       - name: Recuperar instalador y ZIP
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8.0.2
         with:
           name: produccion-liturgica-obs-windows
           path: release

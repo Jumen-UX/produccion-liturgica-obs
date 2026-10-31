@@ -1,5 +1,6 @@
 configuracion.json
 conexion_obs.json
+acceso_lan.json
 *.local.json
 .env
 .env.*

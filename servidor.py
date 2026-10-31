@@ -1,13 +1,26 @@
 from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
-from urllib.parse import urlparse
+from urllib.parse import urlparse, parse_qs
 from pathlib import Path
+from http.cookies import SimpleCookie, CookieError
+from ipaddress import ip_address
 import json, copy, time, uuid, re, threading, os
-from obs_monitor import OBSMonitor, graphic_state
+from obs_monitor import (OBSAuthRejected, OBSAuthRequired, OBSConnectionError,
+                         OBSMonitor, OBSProtocolIncompatible, graphic_state)
+from lan_access import LANAccess, LANRuntime, local_addresses
 
 ROOT=Path(os.environ.get("LITURGIA_APP_DIR",Path(__file__).resolve().parent)).resolve()
 DATA=ROOT/"configuracion.json"
 OBS_MONITOR=OBSMonitor(ROOT/"conexion_obs.json")
+LAN_ACCESS=LANAccess(ROOT/"acceso_lan.json")
+LAN_RUNTIME=None
 LOCK=threading.RLock()
+EVENT_CONDITION=threading.Condition()
+EVENT_VERSION=0
+def announce_change():
+    global EVENT_VERSION
+    with EVENT_CONDITION:
+        EVENT_VERSION+=1
+        EVENT_CONDITION.notify_all()
 LOWER_DEFAULT={"template":"classic","enter":"fade","exit":"fade","duration":650,"opacity":94,"background":"#152941","accent":"#D6B678","name":"Nombre del participante","role":"Participante","subtitle":""}
 LOWER_TEMPLATES={"classic","minimal","liturgical","modern"}
 LOWER_EFFECTS={"fade","left","right","rise","zoom","none"}
@@ -43,6 +56,9 @@ last_visible_state=None
 MODES={"espera","cintillo","lectura","salmo","evangelio","homilia","ofertorio","comunion","avisos","cierre","limpio","incidencia","participante","lower_third"}
 THEMES={"ordinario","adviento","navidad","cuaresma","pascua","pentecostes","martires","blanco","rojo","verde","morado","rosa","negro","personalizado"}
 MEDIA_RE=re.compile(r"^/media/[a-f0-9]{32}\.(?:png|jpg|webp|mp4|webm)$")
+STATIC_PAGES={"/panel.html","/overlay.html","/dock.html","/studio.html","/login.html","/remote.html"}
+REMOTE_READ={"/api/state","/api/draft","/api/obs-status","/api/session","/api/events"}
+REMOTE_COMMANDS={"publish","launch","clean","restore","timer_start","timer_pause","timer_reset","social_show","social_hide","logo_toggle"}
 def persist():
     DATA.write_text(json.dumps({k:v for k,v in draft.items() if k not in ("running","end_at","remaining")},ensure_ascii=False,indent=2),encoding="utf-8")
 def snapshot():
@@ -84,37 +100,178 @@ def sanitized(updates):
         out[k]=v
     return out
 class Handler(SimpleHTTPRequestHandler):
+    protocol_version="HTTP/1.1"
     def __init__(self,*a,**kw):super().__init__(*a,directory=str(ROOT),**kw)
     def log_message(self,*a):pass
-    def respond(self,value,status=200):
+    @property
+    def remote(self):return getattr(self.server,"lan_public",False)
+    def end_headers(self):
+        self.send_header("X-Content-Type-Options","nosniff")
+        self.send_header("Referrer-Policy","no-referrer")
+        self.send_header("X-Frame-Options","DENY" if self.remote else "SAMEORIGIN")
+        self.send_header("Content-Security-Policy","default-src 'self'; connect-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; frame-ancestors 'none'" if self.remote else "frame-ancestors 'self'")
+        super().end_headers()
+    def respond(self,value,status=200,headers=None):
         b=json.dumps(value,ensure_ascii=False).encode("utf-8")
-        self.send_response(status);self.send_header("Content-Type","application/json; charset=utf-8");self.send_header("Cache-Control","no-store");self.send_header("Content-Length",str(len(b)));self.end_headers();self.wfile.write(b)
+        self.send_response(status);self.send_header("Content-Type","application/json; charset=utf-8");self.send_header("Cache-Control","no-store");self.send_header("Content-Length",str(len(b)))
+        for name,value in (headers or {}).items():self.send_header(name,value)
+        self.end_headers();self.wfile.write(b)
+    def trusted_host(self):
+        host=self.headers.get("Host","")
+        if not host or "@" in host or "/" in host:return False
+        name,separator,port=host.rpartition(":")
+        if not separator or not port.isdigit() or int(port)!=self.server.server_port:return False
+        if not self.remote:return name in ("127.0.0.1","localhost")
+        try:return name=="127.0.0.1" or (ip_address(name).version==4 and name in local_addresses())
+        except ValueError:return False
+    def same_origin(self):
+        origin=self.headers.get("Origin")
+        if self.remote and not origin:return False
+        return not origin or origin=="http://"+self.headers.get("Host","")
+    def token(self):
+        try:
+            cookie=SimpleCookie();cookie.load(self.headers.get("Cookie",""))
+            return cookie["plobs_session"].value if "plobs_session" in cookie else ""
+        except (CookieError,ValueError):return ""
+    def role(self):return LAN_ACCESS.session_role(self.token()) if self.remote else "admin"
+    def restricted(self,minimum="viewer"):
+        role=self.role()
+        if not role:
+            self.respond({"error":"Inicia sesión para continuar"},401)
+            return True
+        if minimum=="operator" and role!="operator":
+            self.respond({"error":"Permiso de operador requerido"},403)
+            return True
+        return False
+    def do_HEAD(self):
+        self.send_response(405);self.send_header("Content-Length","0");self.end_headers()
+    def do_OPTIONS(self):self.respond({"error":"Método no disponible"},405)
+    def serve_events(self):
+        self.send_response(200)
+        self.send_header("Content-Type","text/event-stream; charset=utf-8")
+        self.send_header("Cache-Control","no-store")
+        self.send_header("Connection","keep-alive")
+        self.end_headers()
+        # Las notificaciones no llevan datos personales; cada cliente consulta el estado vigente.
+        previous=-1
+        try:
+            while LAN_ACCESS.session_role(self.token()):
+                with EVENT_CONDITION:
+                    EVENT_CONDITION.wait_for(lambda:EVENT_VERSION!=previous,timeout=1)
+                    previous=EVENT_VERSION
+                self.wfile.write(f"data: {previous}\n\n".encode("ascii"))
+                self.wfile.flush()
+        except (BrokenPipeError,ConnectionResetError,OSError):pass
+        finally:self.close_connection=True
     def do_GET(self):
-        path=urlparse(self.path).path
+        if not self.trusted_host():return self.respond({"error":"Host no autorizado"},421)
+        parsed=urlparse(self.path);path=parsed.path
+        if self.remote:
+            if path=="/":path="/remote.html"
+            if path in ("/login.html","/remote.html"):
+                if path=="/remote.html" and self.restricted():return
+                return super().do_GET() if parsed.path==path else self.serve_page(path)
+            if path not in REMOTE_READ:return self.respond({"error":"Ruta no disponible en red"},404)
+            if self.restricted():return
+            if path=="/api/session":return self.respond({"role":self.role()})
+            if path=="/api/events":return self.serve_events()
+        elif path=="/api/lan/status":
+            return self.respond(LAN_ACCESS.details(LAN_RUNTIME.error if LAN_RUNTIME else ""))
+        elif path=="/api/lan/qr.svg":
+            address=parse_qs(parsed.query).get("address",[""])[0]
+            with LAN_ACCESS.lock:
+                enabled,port=LAN_ACCESS.config["enabled"],LAN_ACCESS.config["port"]
+            if not enabled or address not in local_addresses():return self.respond({"error":"Dirección LAN inválida"},404)
+            try:
+                import qrcode
+                from qrcode.image.svg import SvgPathImage
+                qr=qrcode.make(f"http://{address}:{port}/login.html",image_factory=SvgPathImage)
+                from io import BytesIO
+                buffer=BytesIO();qr.save(buffer);data=buffer.getvalue()
+            except ImportError:return self.respond({"error":"Falta instalar la dependencia qrcode"},503)
+            self.send_response(200);self.send_header("Content-Type","image/svg+xml");self.send_header("Cache-Control","no-store");self.send_header("Content-Length",str(len(data)));self.end_headers();return self.wfile.write(data)
         if path in ("/api/state","/api/draft"):
             with LOCK:self.respond(snapshot() if path=="/api/state" else copy.deepcopy(draft))
         elif path=="/api/obs-config":
             self.respond(OBS_MONITOR.configuration())
+        elif path=="/api/obs-diagnostic" and not self.remote:
+            self.respond(OBS_MONITOR.diagnostic())
         elif path=="/api/obs-status":
             with LOCK:current=snapshot()
             status=OBS_MONITOR.get_status()
             status.update(graphic_status=graphic_state(current,status),graphic_mode=current.get("mode"),
                           graphic_title=current.get("lower_third",{}).get("name") if current.get("mode")=="lower_third" else current.get("title"))
             self.respond(status)
-        else:super().do_GET()
+        elif not self.remote and (path in STATIC_PAGES or MEDIA_RE.fullmatch(path) or re.fullmatch(r"/logo_parroquial\.(png|jpg|webp)",path)):
+            super().do_GET()
+        else:self.respond({"error":"Archivo no disponible"},404)
+    def serve_page(self,path):
+        self.path=path
+        return super().do_GET()
     def do_POST(self):
         global last_visible_state
+        if not self.trusted_host():return self.respond({"error":"Host no autorizado"},421)
+        if not self.same_origin():return self.respond({"error":"Origen no autorizado"},403)
         path=urlparse(self.path).path
-        if path not in ("/api/update","/api/logo","/api/image","/api/logo-video","/api/obs-config"):return self.respond({"error":"Ruta inválida"},404)
+        if self.remote:
+            if path not in ("/api/login","/api/logout","/api/update"):
+                return self.respond({"error":"Ruta no disponible en red"},404)
+            if path=="/api/update" and self.restricted("operator"):return
+            if path=="/api/logout":
+                LAN_ACCESS.logout(self.token())
+                return self.respond({"ok":True},headers={"Set-Cookie":"plobs_session=; Max-Age=0; HttpOnly; SameSite=Strict; Path=/"})
+            if path=="/api/login":
+                if self.headers.get("Content-Type","").split(";")[0]!="application/json":
+                    return self.respond({"error":"Solo se acepta JSON"},415)
+                try:
+                    size=int(self.headers.get("Content-Length","0"))
+                    if not 0<size<=1024:raise ValueError("Tamaño inválido")
+                    credentials=json.loads(self.rfile.read(size))
+                    if not isinstance(credentials,dict) or set(credentials)!={"password"}:
+                        raise ValueError("Credenciales inválidas")
+                    token,role=LAN_ACCESS.login(self.client_address[0],credentials["password"])
+                except (ValueError,TypeError,KeyError) as exc:
+                    return self.respond({"error":str(exc)},400)
+                if not token:return self.respond({"error":role},429 if role.startswith("Demasiados") else 401)
+                return self.respond({"ok":True,"role":role},headers={"Set-Cookie":f"plobs_session={token}; Max-Age=28800; HttpOnly; SameSite=Strict; Path=/"})
+        elif path=="/api/lan/config":
+            try:
+                if self.headers.get("Content-Type","").split(";")[0]!="application/json":raise ValueError("Solo se acepta JSON")
+                size=int(self.headers.get("Content-Length","0"))
+                if not 0<size<=4096:raise ValueError("Tamaño inválido")
+                values=json.loads(self.rfile.read(size))
+                previous=LAN_ACCESS.configure(values)
+                try:
+                    if LAN_RUNTIME:LAN_RUNTIME.apply()
+                except OSError as exc:
+                    LAN_ACCESS.rollback(previous)
+                    return self.respond({"error":"No se pudo abrir el puerto LAN: "+str(exc)},409)
+                return self.respond({"ok":True,"config":LAN_ACCESS.details()})
+            except (ValueError,TypeError,KeyError) as exc:return self.respond({"error":str(exc)},400)
+        if path not in ("/api/update","/api/logo","/api/image","/api/logo-video","/api/obs-config","/api/obs-detect"):return self.respond({"error":"Ruta inválida"},404)
         try:
             size=int(self.headers.get("Content-Length","0"))
             if size<1 or size>35*1024*1024:raise ValueError("Tamaño inválido")
-            if path=="/api/obs-config" and size>4096:raise ValueError("Configuración OBS demasiado grande")
+            if path in ("/api/obs-config","/api/obs-detect") and size>4096:raise ValueError("Configuración OBS demasiado grande")
+            if self.remote and (path!="/api/update" or size>4096):raise ValueError("Solicitud remota no permitida")
+            if self.remote and self.headers.get("Content-Type","").split(";")[0]!="application/json":
+                return self.respond({"error":"Solo se acepta JSON"},415)
             body=self.rfile.read(size)
             if path=="/api/obs-config":
                 if self.headers.get("Content-Type","").split(";")[0]!="application/json":
                     raise ValueError("Solo se acepta JSON para conectar OBS")
                 return self.respond({"ok":True,"config":OBS_MONITOR.configure(json.loads(body))})
+            if path=="/api/obs-detect":
+                if self.headers.get("Content-Type","").split(";")[0]!="application/json":
+                    raise ValueError("Solo se acepta JSON para detectar fuentes OBS")
+                values=json.loads(body)
+                if not isinstance(values,dict) or set(values)-{"port","password"}:
+                    raise ValueError("Solicitud de detección inválida")
+                try:return self.respond(OBS_MONITOR.detect_graphic_sources(**values))
+                except OBSAuthRequired:return self.respond({"code":"password_required","error":"OBS pide una contraseña WebSocket"},409)
+                except OBSAuthRejected:return self.respond({"code":"auth_failed","error":"OBS rechazó la contraseña WebSocket"},409)
+                except OBSProtocolIncompatible:return self.respond({"code":"incompatible","error":"OBS requiere WebSocket 5.x"},409)
+                except (OSError,OBSConnectionError):return self.respond({"code":"unavailable","error":"OBS WebSocket no responde. Comprueba que OBS esté abierto y el servidor habilitado."},409)
             if path!="/api/update":
                 kind=self.headers.get("Content-Type","").split(";")[0]
                 image_types={"image/png":(b"\x89PNG\r\n\x1a\n","png"),"image/jpeg":(b"\xff\xd8\xff","jpg"),"image/webp":(b"RIFF","webp")}
@@ -136,6 +293,8 @@ class Handler(SimpleHTTPRequestHandler):
                 (folder/name).write_bytes(body)
                 return self.respond({"ok":True,"url":"/media/"+name})
             data=json.loads(body)
+            if self.remote and (not isinstance(data,dict) or data.get("command") not in REMOTE_COMMANDS):
+                return self.respond({"error":"Comando no permitido en acceso remoto"},403)
             with LOCK:
                 cmd=data.get("command")
                 if cmd=="draft":draft.update(sanitized(data.get("updates",{})));persist()
@@ -172,8 +331,13 @@ class Handler(SimpleHTTPRequestHandler):
                     live.update(running=False,end_at=None)
                 elif cmd=="timer_reset":live.update(running=False,end_at=None,remaining=live["timer_minutes"]*60)
                 else:raise ValueError("Comando desconocido")
+                announce_change()
                 self.respond({"ok":True,"live":snapshot(),"draft":copy.deepcopy(draft)})
         except (ValueError,TypeError,KeyError,IndexError) as exc:self.respond({"error":str(exc)},400)
 if __name__=="__main__":
     print("Panel: http://127.0.0.1:8765/panel.html",flush=True)
-    ThreadingHTTPServer(("127.0.0.1",8765),Handler).serve_forever()
+    LAN_RUNTIME=LANRuntime(LAN_ACCESS,Handler)
+    try:LAN_RUNTIME.apply()
+    except OSError as exc:print("Acceso LAN desactivado:",exc,flush=True);LAN_RUNTIME.error=str(exc)
+    try:ThreadingHTTPServer(("127.0.0.1",8765),Handler).serve_forever()
+    finally:LAN_RUNTIME.stop()

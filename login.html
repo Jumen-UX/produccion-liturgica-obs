@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Acceso remoto · Producción Litúrgica OBS</title>
+<style>
+:root{color-scheme:dark;font-family:system-ui,'Segoe UI',sans-serif;background:#101c2b;color:#f1f5fb}*{box-sizing:border-box}
+body{min-height:100vh;margin:0;display:grid;place-items:center;padding:18px}main{background:#1c2b3e;border:1px solid #3d5369;border-radius:18px;padding:28px;width:100%;max-width:410px;box-shadow:0 18px 50px #050e1c88}
+h1{font-size:23px;line-height:1.25;margin:0 0 10px}.eyebrow{color:#e1c185;font-size:12px;font-weight:800;letter-spacing:.09em}p{font-size:14px;color:#bccbd8;line-height:1.55}
+label{display:block;font-size:13px;margin:22px 0 7px}input{width:100%;padding:13px;border:1px solid #6b8196;border-radius:9px;background:#102033;color:#fff;font:inherit}button{width:100%;margin-top:15px;background:#d6b678;color:#102033;font:inherit;font-weight:800;border:0;border-radius:9px;padding:14px;cursor:pointer}button:disabled{opacity:.6}
+input:focus-visible,button:focus-visible{outline:3px solid #fff;outline-offset:3px}.note{font-size:12px;color:#9eb0c3}.error{color:#ffb9ae;min-height:21px;font-size:13px}
+</style></head><body><main>
+<div class="eyebrow">RED LOCAL · OBS</div><h1>Control de gráficos</h1>
+<p>Introduce la contraseña que el administrador configuró en la computadora de OBS. El QR abre esta página, pero no concede permisos por sí mismo.</p>
+<form id="form"><label for="password">Contraseña de operador o de consulta</label><input id="password" type="password" required autocomplete="current-password" minlength="12" maxlength="128"><button id="submit" type="submit">Entrar al control remoto</button></form>
+<div id="error" class="error" role="alert" aria-live="polite"></div><p class="note">Usa únicamente una red Wi-Fi privada y de confianza. El acceso local por HTTP no cifra el tráfico de la red.</p>
+</main><script>
+const form=document.getElementById('form'),submit=document.getElementById('submit'),error=document.getElementById('error');
+form.addEventListener('submit',async event=>{event.preventDefault();error.textContent='';submit.disabled=true;try{const response=await fetch('/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:document.getElementById('password').value})});const data=await response.json();if(!response.ok)throw Error(data.error||'No fue posible ingresar');document.getElementById('password').value='';location.replace('/remote.html')}catch(exc){error.textContent=exc.message}finally{submit.disabled=false}});
+</script></body></html>

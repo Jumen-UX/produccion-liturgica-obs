@@ -14,6 +14,7 @@ import threading
 import time
 import uuid
 from pathlib import Path
+from urllib.parse import urlparse
 
 
 class OBSConnectionError(Exception):
@@ -21,6 +22,18 @@ class OBSConnectionError(Exception):
 
 
 class OBSRequestError(OBSConnectionError):
+    pass
+
+
+class OBSAuthRequired(OBSConnectionError):
+    pass
+
+
+class OBSAuthRejected(OBSConnectionError):
+    pass
+
+
+class OBSProtocolIncompatible(OBSConnectionError):
     pass
 
 
@@ -36,13 +49,13 @@ class OBSWebSocket:
         try:
             self._handshake()
             greeting = self.receive()
-            if greeting.get("op") != 0:
-                raise OBSConnectionError("OBS no respondió con el protocolo WebSocket 5.x")
+            if not isinstance(greeting, dict) or greeting.get("op") != 0:
+                raise OBSProtocolIncompatible("El servidor no usa el protocolo OBS WebSocket 5.x")
             auth = greeting.get("d", {}).get("authentication")
-            identify = {"rpcVersion": 1}
+            identify = {"rpcVersion": 1, "eventSubscriptions": 0}
             if auth:
                 if not password:
-                    raise OBSConnectionError("OBS solicita contraseña: introdúcela en el panel web")
+                    raise OBSAuthRequired("OBS solicita contraseña: introdúcela en el panel web")
                 challenge = auth["challenge"]
                 salt = auth["salt"]
                 secret = base64.b64encode(hashlib.sha256((password + salt).encode()).digest()).decode()
@@ -50,8 +63,9 @@ class OBSWebSocket:
                     hashlib.sha256((secret + challenge).encode()).digest()
                 ).decode()
             self.send({"op": 1, "d": identify})
-            if self.receive().get("op") != 2:
-                raise OBSConnectionError("OBS rechazó la identificación WebSocket")
+            identified = self.receive()
+            if not isinstance(identified, dict) or identified.get("op") != 2:
+                raise OBSAuthRejected("OBS rechazó la identificación WebSocket: comprueba la contraseña")
         except Exception:
             self.close()
             raise
@@ -177,6 +191,8 @@ class OBSMonitor:
         self.config = {"port": 4455, "source_name": ""}
         self.password = ""  # Solo en memoria; nunca en el archivo ni en respuestas HTTP.
         self.generation = 0
+        self._client = None
+        self._client_generation = None
         self.status = {"connected": False, "streaming": None, "source_active": None,
                        "error": "Configura la fuente de navegador de OBS", "checked_at": 0}
         try:
@@ -206,6 +222,79 @@ class OBSMonitor:
         with self.lock:
             return {**self.config, "has_password": bool(self.password)}
 
+    def diagnostic(self):
+        """Comprobar la disponibilidad real del WebSocket 5.x sin exigir fuente configurada.
+
+        Una conexión rechazada no permite distinguir OBS cerrado, función desactivada,
+        puerto equivocado o instalación sin WebSocket. Nunca afirmar que falta instalarlo.
+        """
+        with self.lock:
+            port = self.config["port"]
+            password = self.password
+            source_configured = bool(self.config["source_name"])
+        # Reuse the worker's recent confirmation instead of opening another socket.
+        if self.get_status()["connected"]:
+            return {"state": "ready", "port": port, "source_configured": source_configured}
+        client = None
+        try:
+            client = OBSWebSocket(port, password)
+            state = "ready"
+        except OBSAuthRequired:
+            state = "password_required"
+        except OBSAuthRejected:
+            state = "auth_failed"
+        except OBSProtocolIncompatible:
+            state = "incompatible"
+        except (OSError, OBSConnectionError, ValueError, KeyError, TypeError):
+            state = "unavailable"
+        finally:
+            if client:
+                client.close()
+        return {"state": state, "port": port, "source_configured": source_configured}
+
+    def detect_graphic_sources(self, port=None, password=None):
+        """Localiza fuentes de navegador que muestran nuestro overlay, sin alterar OBS.
+
+        El puerto y la clave opcionales son solo para esta prueba. Ninguno de los
+        datos se guarda hasta que el operador confirme la fuente detectada.
+        """
+        with self.lock:
+            chosen_port = self.config["port"] if port is None else port
+            chosen_password = self.password if password is None else password
+        if type(chosen_port) is not int or not 1024 <= chosen_port <= 65535:
+            raise ValueError("Puerto OBS inválido")
+        if not isinstance(chosen_password, str) or len(chosen_password) > 256:
+            raise ValueError("Contraseña OBS inválida")
+        client = OBSWebSocket(chosen_port, chosen_password)
+        matches = []
+        try:
+            inputs = client.request("GetInputList").get("inputs", [])
+            if not isinstance(inputs, list):
+                raise OBSConnectionError("OBS no devolvió una lista válida de fuentes")
+            for item in inputs[:200]:
+                if not isinstance(item, dict) or not (
+                    item.get("inputKind") == "browser_source" or
+                    item.get("unversionedInputKind") == "browser_source"
+                ):
+                    continue
+                name = item.get("inputName")
+                if not isinstance(name, str) or not name or len(name) > 100:
+                    continue
+                settings = client.request("GetInputSettings", {"inputName": name}).get("inputSettings", {})
+                if not isinstance(settings, dict) or not isinstance(settings.get("url"), str):
+                    continue
+                try:
+                    url = urlparse(settings["url"])
+                    ours = (url.scheme == "http" and url.hostname in ("127.0.0.1", "localhost")
+                            and url.port == 8765 and url.path == "/overlay.html")
+                except ValueError:
+                    ours = False
+                if ours:
+                    matches.append(name)
+        finally:
+            client.close()
+        return {"matches": matches, "port": chosen_port}
+
     def configure(self, values):
         updated = self._validated(values)
         password = values.get("password", None)
@@ -232,38 +321,49 @@ class OBSMonitor:
                              error="La comprobación con OBS ha caducado")
             return state
 
+    def _close_client(self):
+        if self._client is not None:
+            self._client.close()
+            self._client = None
+        self._client_generation = None
+
+    def _poll_once(self):
+        with self.lock:
+            config, password, generation = dict(self.config), self.password, self.generation
+        if self._client_generation != generation or not config["source_name"]:
+            self._close_client()
+        if not config["source_name"]:
+            return
+        try:
+            if self._client is None:
+                self._client = OBSWebSocket(config["port"], password)
+                self._client_generation = generation
+            stream = self._client.request("GetStreamStatus")
+            stream_active = stream.get("outputActive")
+            if not isinstance(stream_active, bool):
+                raise OBSConnectionError("OBS no confirmó el estado de transmisión")
+            reconnecting = stream.get("outputReconnecting") is True
+            state = {"connected": True, "streaming": None if reconnecting else stream_active,
+                     "source_active": None, "error": "", "checked_at": time.time()}
+            if reconnecting:
+                state["error"] = "OBS está reconectando la transmisión"
+            try:
+                active = self._client.request("GetSourceActive", {"sourceName": config["source_name"]})
+                video_active = active.get("videoActive")
+                state["source_active"] = video_active if isinstance(video_active, bool) else None
+            except OBSRequestError:
+                state["source_active"] = False
+                state["error"] = "Comprueba el nombre de la fuente de navegador en OBS"
+        except (OBSConnectionError, OSError, ValueError, KeyError, TypeError) as exc:
+            self._close_client()
+            state = {"connected": False, "streaming": None, "source_active": None,
+                     "error": str(exc) or "No se pudo conectar con OBS", "checked_at": time.time()}
+        with self.lock:
+            if self.generation == generation:
+                self.status = state
+
     def _worker(self):
         while True:
-            with self.lock:
-                config, password, generation = dict(self.config), self.password, self.generation
-            if config["source_name"]:
-                client = None
-                try:
-                    client = OBSWebSocket(config["port"], password)
-                    stream = client.request("GetStreamStatus")
-                    stream_active = stream.get("outputActive")
-                    if not isinstance(stream_active, bool):
-                        raise OBSConnectionError("OBS no confirmó el estado de transmisión")
-                    reconnecting = stream.get("outputReconnecting") is True
-                    state = {"connected": True, "streaming": None if reconnecting else stream_active,
-                             "source_active": None, "error": "", "checked_at": time.time()}
-                    if reconnecting:
-                        state["error"] = "OBS está reconectando la transmisión"
-                    try:
-                        active = client.request("GetSourceActive", {"sourceName": config["source_name"]})
-                        video_active = active.get("videoActive")
-                        state["source_active"] = video_active if isinstance(video_active, bool) else None
-                    except OBSRequestError:
-                        state["source_active"] = False
-                        state["error"] = "Comprueba el nombre de la fuente de navegador en OBS"
-                except (OBSConnectionError, OSError, ValueError, KeyError, TypeError) as exc:
-                    state = {"connected": False, "streaming": None, "source_active": None,
-                             "error": str(exc) or "No se pudo conectar con OBS", "checked_at": time.time()}
-                finally:
-                    if client:
-                        client.close()
-                with self.lock:
-                    if self.generation == generation:
-                        self.status = state
+            self._poll_once()
             self.wake.wait(self.POLL_SECONDS)
             self.wake.clear()

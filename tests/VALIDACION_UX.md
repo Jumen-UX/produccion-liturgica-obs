@@ -14,7 +14,9 @@ Entorno: Windows, navegador Chromium/Edge y dock de OBS cuando esté integrado.
 - [ ] Restaurar y comprobar la salida previa prevista.
 - [ ] Probar navegación de teclado, foco visible y pantalla estrecha.
 - [ ] Verificar que errores de almacenamiento local no impiden usar la consola.
-- [ ] Abrir **Avanzado → Conexión y verificación de OBS** y configurar puerto, contraseña y nombre exacto de Fuente de navegador.
+- [ ] En modo **Esencial**, abrir «Conexiones · OBS y teléfono» y localizar las tarjetas «1. Conectar OBS» y «2. Conectar teléfono o tableta» sin ir a Avanzado.
+- [ ] Con OBS abierto, comprobar detección automática de la fuente de navegador de `overlay.html`; si hay dos coincidencias, no debe seleccionar una arbitrariamente.
+- [ ] Comprobar que el QR aparece en la segunda tarjeta solo al activar acceso remoto con una contraseña válida y que el enlace abre en un móvil de la misma red.
 - [ ] Sin OBS conectado, comprobar que Dock y panel muestran **SIN VERIFICAR**, pero permiten usar Imagen limpia y Restaurar.
 - [ ] Con OBS conectado y transmisión detenida, activar la fuente en programa: debe mostrarse **EN PROGRAMA**.
 - [ ] Iniciar transmisión de prueba con la fuente activa y gráfico publicado: debe mostrarse **AL AIRE** en Dock y panel.
@@ -23,4 +25,35 @@ Entorno: Windows, navegador Chromium/Edge y dock de OBS cuando esté integrado.
 - [ ] Cortar OBS WebSocket o simular reconexión: nunca debe permanecer falsamente **AL AIRE**.
 - [ ] Confirmar que los botones del Dock identifican solo el gráfico preparado que coincide con el publicado, aunque otro gráfico del mismo tipo tenga nuevos textos.
 
+## Actualizaciones y desinstalación en Windows
+
+- [x] **Prueba automatizada incorporada al CI:** instalar dos paquetes sucesivos con el mismo `AppId` y versiones de prueba distintas; verificar una sola entrada de desinstalación y persistencia de un archivo de datos. [GitHub Actions #13: aprobado](https://github.com/Jumen-UX/produccion-liturgica-obs/actions/runs/41211102589).
+- [ ] En una PC Windows de pruebas, instalar realmente una versión anterior publicada o entregada para pruebas (no una segunda compilación del mismo código).
+- [ ] Preparar nombre de comunidad, logo, plantilla, participantes y acceso LAN; hacer respaldo privado de `%LOCALAPPDATA%\ProduccionLiturgicaOBS`.
+- [ ] Cerrar el programa auxiliar y OBS cuando sea necesario para liberar el ejecutable; instalar la nueva versión **sin desinstalar primero**.
+- [ ] Confirmar en **Aplicaciones instaladas** una sola entrada «Producción Litúrgica OBS», y que los accesos directos abren la versión nueva.
+- [ ] Confirmar la conservación de `configuracion.json`, medios y `acceso_lan.json`; volver a introducir la clave OBS WebSocket (solo se conserva en memoria) y probar Dock, Fuente de navegador, QR y estado de programa.
+- [ ] Desinstalar desde Windows y comprobar que las configuraciones y archivos personales permanecen recuperables. No borrar los datos antes de verificarlos.
+- [ ] Si había carpetas de ZIP/EXE portátiles antiguos, retirarlas por separado **solo después** de confirmar la actualización; el instalador no debe eliminarlas automáticamente.
+
 **La integración con OBS y las pruebas visuales requieren ejecución en la computadora del operador.**
+
+## Comprobación de conexión persistente y panel compacto
+
+- El operador confirmó en este chat que pudo conectar desde el móvil y que funciona; esto no acredita todavía todos los casos de la lista.
+- [ ] Con OBS configurado, mantener el panel abierto varios minutos y confirmar que cesan los avisos repetidos de conexión/desconexión.
+- [ ] Reiniciar OBS y comprobar reconexión y ausencia de un indicador AL AIRE obsoleto.
+- [ ] Verificar que Conexiones, Identidad y Guía se despliegan por teclado y que los botones de conectar abren los ajustes.
+- [ ] Confirmar que preparar, publicar, limpiar, restaurar y observar la salida siguen accesibles con los ajustes plegados.
+
+## Interfaces adaptativas: Dock, remoto y panel web
+
+- Prueba reproducible: `node tests/test_responsive_interfaces.cjs` (Chrome/Edge instalado, o ruta en `CHROME_BINARY`).
+- Verificado localmente en Windows/Chromium: 48 combinaciones (anchos 240, 280, 320, 375, 480, 768, 960 y 1280; alturas 360 y 800), sin desbordamiento horizontal, con secciones desplegadas.
+- Eventos reales del navegador con HTTP/OBS simulados: guardar frente a publicar, lanzar, limpiar/restaurar, temporizador, logo/redes, accesos a ajustes, consulta sin permisos, desconexión y prevención de clics duplicados mientras una orden sigue pendiente.
+- Dock y remoto: estado y controles de salida primero; gráficos preparados después; logo y redes en un desplegable. La cabecera operativa permanece al desplazar cuando la altura permite hacerlo.
+- Panel web estrecho: salida antes de preparación; vista previa desplegable; participantes agrupados, con apertura directa desde «Ir a participantes». Controles críticos en la barra compacta, sin botones duplicados en el monitor.
+- [ ] Redimensionar el Dock dentro de OBS real y probar cada control en una transmisión simulada.
+- [ ] Comprobar el remoto en el teléfono real, en vertical/horizontal y con textos largos.
+- [ ] Revisar teclado/foco y uso con zoom del navegador en el panel.
+- Estas pruebas simuladas no certifican la salida real de OBS ni reemplazan la validación del dispositivo.
