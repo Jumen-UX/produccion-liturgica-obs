@@ -33,6 +33,10 @@ jobs:
         shell: pwsh
         run: node --test tests/test_lan_panel.cjs
 
+      - name: Probar interfaces adaptativas en Chromium
+        shell: pwsh
+        run: node tests/test_responsive_interfaces.cjs
+
       - name: Probar el código Python
         shell: pwsh
         run: |
