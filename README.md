@@ -100,3 +100,11 @@ Los colores de las fiestas y solemnidades deben comprobarse según el calendario
 ## Experiencia de uso
 
 La interfaz emplea **complejidad progresiva**: niveles Esencial, Personalizar y Avanzado sin perder los controles críticos de transmisión. Consulta [principios de UX](docs/UX_COMPLEJIDAD_PROGRESIVA.md) y [lista de validación](tests/VALIDACION_UX.md).
+
+## Tamaño de los controles
+
+El Dock, el control remoto y el panel web se reorganizan según el ancho disponible: los botones y las filas pasan a una columna en espacios estrechos y los textos pueden ocupar varias líneas. En ventanas bajas, los controles superiores dejan de ser fijos para no tapar el contenido.
+
+En el Dock y el remoto, el estado y los botones de limpiar/restaurar aparecen antes de los gráficos preparados. Logo y redes están en un desplegable. En el panel web estrecho, el monitor de salida aparece primero; «Ver vista de salida» abre la previsualización y «Ir a participantes» abre los nombres. Los ajustes de conexión e identidad siguen accesibles sin publicar ningún gráfico.
+
+Prueba automatizada de interfaz con Chromium y servidor simulado: `node tests/test_responsive_interfaces.cjs`. La comprobación final dentro de OBS y en el teléfono sigue siendo necesaria.
