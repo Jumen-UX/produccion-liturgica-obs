@@ -24,6 +24,15 @@ jobs:
         with:
           python-version: '3.12'
 
+      - name: Instalar Node para pruebas del panel
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Probar formulario LAN y sintaxis JavaScript
+        shell: pwsh
+        run: node --test tests/test_lan_panel.cjs
+
       - name: Probar el código Python
         shell: pwsh
         run: |
