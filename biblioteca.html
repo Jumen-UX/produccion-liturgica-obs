@@ -58,9 +58,9 @@ label{font-size:13px;font-weight:650;display:block;margin:12px 0 5px}
 <script>
 const $=id=>document.getElementById(id);
 const labels={lower_third:'Lower Thirds',titulo:'Títulos',lectura:'Lecturas',salmo:'Salmos',aviso:'Avisos',red_social:'Redes sociales',frase:'Frases',logo:'Logos',qr:'Códigos QR',pantalla:'Pantallas',temporizador:'Temporizadores',credito:'Créditos',patrocinador:'Patrocinadores',imagen:'Imágenes',video:'Videos'};
-const fields={lower_third:[['name','Nombre mostrado'],['role','Cargo'],['subtitle','Subtítulo']],titulo:[['title','Título'],['body','Detalle']],lectura:[['title','Lectura'],['body','Referencia']],salmo:[['title','Título'],['body','Referencia']],aviso:[['title','Aviso'],['body','Mensaje']],red_social:[['network','Red'],['handle','Usuario o enlace'],['phrase','Frase']],frase:[['text','Frase']],logo:[['name','Nombre']],qr:[['title','Texto'],['url','Enlace']],pantalla:[['title','Título'],['body','Texto']],temporizador:[['minutes','Minutos']],credito:[['title','Nombre'],['body','Descripción']],patrocinador:[['title','Patrocinador']],imagen:[['title','Descripción']],video:[['title','Descripción']]};
+const fields={lower_third:[['name','Nombre mostrado'],['role','Cargo'],['subtitle','Subtítulo'],['template','Plantilla'],['enter','Entrada'],['exit','Salida'],['background','Color de fondo'],['accent','Color de acento'],['opacity','Opacidad (%)'],['duration','Duración animación (ms)']],titulo:[['title','Título'],['body','Detalle']],lectura:[['title','Lectura'],['body','Referencia']],salmo:[['title','Título'],['body','Referencia']],aviso:[['title','Aviso'],['body','Mensaje']],red_social:[['network','Red'],['handle','Usuario o enlace'],['phrase','Frase']],frase:[['text','Frase']],logo:[['name','Nombre']],qr:[['title','Texto'],['url','Enlace']],pantalla:[['title','Título'],['body','Texto']],temporizador:[['minutes','Minutos']],credito:[['title','Nombre'],['body','Descripción']],patrocinador:[['title','Patrocinador']],imagen:[['title','Descripción']],video:[['title','Descripción']]};
 const launchable=new Set(['lower_third','titulo','lectura','salmo','aviso','frase']);
-let state=null,kind='lower_third',editing=null,baseForPreview={mode:'limpio',visible:false},previewReady=false;
+let state=null,kind='lower_third',editing=null,baseForPreview={mode:'limpio',visible:false},draftForPreview={lower_third:{}},previewReady=false;
 const NETWORKS=['instagram','facebook','youtube','whatsapp','telegram','tiktok','website'];
 const networkNames={instagram:'Instagram',facebook:'Facebook',youtube:'YouTube',whatsapp:'WhatsApp',telegram:'Telegram',tiktok:'TikTok',website:'Sitio web'};
 function scalePreview(){const stage=$('previewStage');$('obsPreview').style.transform='scale('+(stage.clientWidth/1920)+')'}
@@ -70,7 +70,7 @@ if(typeof ResizeObserver!=='undefined')new ResizeObserver(scalePreview).observe(
 function previewItemData(){const payload={...editing.data};for(const [key] of fields[kind])payload[key]=$('field-'+key)?.value||'';return payload}
 function previewState(){
  const payload=previewItemData(),base={...baseForPreview,visible:true,social_rotation:null,social_enabled:false,social_now:false,social_during_mass:false};
- if(kind==='lower_third')return {...base,mode:'lower_third',lower_third:{...(base.lower_third||{}),...payload}};
+ if(kind==='lower_third')return {...base,mode:'lower_third',lower_third:{...(draftForPreview.lower_third||{}),...payload}};
  if(kind==='red_social')return {...base,mode:'social_preview',social_now:true,social_rotation:{items:[payload],started_at:Date.now()/1000,settings:{duration:30,interval:30,loop:true,placement:'all'}}};
  return {...base,mode:({titulo:'cintillo',lectura:'lectura',salmo:'salmo',aviso:'avisos',frase:'cintillo'})[kind]||'limpio',title:payload.title||payload.text||$('itemName').value,detail:payload.body||'',reference:'',subtitle:''};
 }
@@ -78,7 +78,7 @@ function previewState(){
 async function request(path,body){const response=await fetch(path,{method:body?'POST':'GET',cache:'no-store',headers:body?{'Content-Type':'application/json'}:{},body:body?JSON.stringify(body):undefined});const data=await response.json();if(!response.ok)throw Error(data.error||'Error del servidor');return data}
 function notice(text,error=false){$('note').textContent=text;$('note').className=error?'error':''}
 function active(){return state.productions.find(p=>p.id===state.active_id)}
-async function reload(){const values=await Promise.all([request('/api/productions'),request('/api/state')]);state=values[0];baseForPreview=values[1];render()}
+async function reload(){const values=await Promise.all([request('/api/productions'),request('/api/state'),request('/api/draft')]);state=values[0];baseForPreview=values[1];draftForPreview=values[2];render()}
 async function mutate(payload){try{state=await request('/api/productions',payload);render();notice('Cambios guardados correctamente.')}catch(e){notice(e.message,true)}}
 function button(text,fn,klass='secondary'){const el=document.createElement('button');el.type='button';el.className=klass;el.textContent=text;el.onclick=fn;return el}
 function render(){const selected=active();
@@ -98,7 +98,18 @@ $('previewStage').hidden=!(launchable.has(kind)||kind==='red_social');
 $('previewLabel').textContent=$('previewStage').hidden?'Este tipo todavía no admite previsualización real.':'Vista previa fiel a OBS · 1920 × 1080 · no afecta la transmisión.';
 if(kind==='red_social')$('socialLogoThumb').src=editing.data.logo||'';
 $('itemName').value=editing.name;$('itemEnabled').checked=editing.enabled;$('fields').replaceChildren();
-for(const [key,label] of fields[kind]){const lab=document.createElement('label');lab.textContent=label;lab.htmlFor='field-'+key;let input;if(kind==='red_social'&&key==='network'){input=document.createElement('select');for(const network of NETWORKS){const option=document.createElement('option');option.value=network;option.textContent=networkNames[network];input.append(option)}}else{input=document.createElement('input');input.maxLength=300}input.id='field-'+key;input.value=editing.data[key]??(key==='network'?'instagram':'');input.oninput=preview;input.onchange=preview;$('fields').append(lab,input)}preview()}
+for(const [key,label] of fields[kind]){const lab=document.createElement('label');lab.textContent=label;lab.htmlFor='field-'+key;let input;const templateOptions={classic:'Clásica',minimal:'Minimalista',liturgical:'Litúrgica',modern:'Moderna'};
+const motionOptions={fade:'Desvanecer',left:'Desde izquierda',right:'Desde derecha',rise:'Elevar',zoom:'Zoom',none:'Sin animación'};
+const options=kind==='red_social'&&key==='network'?Object.fromEntries(NETWORKS.map(n=>[n,networkNames[n]])):kind==='lower_third'&&key==='template'?templateOptions:kind==='lower_third'&&['enter','exit'].includes(key)?motionOptions:null;
+if(options){input=document.createElement('select');for(const [value,caption] of Object.entries(options)){const option=document.createElement('option');option.value=value;option.textContent=caption;input.append(option)}}else{input=document.createElement('input');input.maxLength=300;
+if(['background','accent'].includes(key))input.type='color';
+if(['duration','opacity'].includes(key)){input.type='number';input.min=key==='opacity'?'25':'150';input.max=key==='opacity'?'100':'2500';input.step=key==='duration'?'50':'1'}
+}
+input.id='field-'+key;
+const style=kind==='lower_third'?(draftForPreview.lower_third||{}):{};
+input.value=editing.data[key]??style[key]??(key==='network'?'instagram':'');
+if(input.type==='color'&&!input.value)input.value=key==='background'?'#152941':'#D6B678';
+input.oninput=preview;input.onchange=preview;$('fields').append(lab,input)}preview()}
 function preview(phase='update'){
  if(!editing||$('previewStage').hidden||!previewReady)return;
  $('obsPreview').contentWindow.postMessage({type:'plobs-preview',phase:typeof phase==='string'?phase:'update',state:previewState()},location.origin);
