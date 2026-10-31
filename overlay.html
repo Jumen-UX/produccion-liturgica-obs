@@ -165,6 +165,7 @@ if(previewMode){
  window.addEventListener('message',event=>{
   if(event.source!==window.parent||event.origin!==location.origin)return;
   const message=event.data;
+  if(message?.type==='plobs-preview-ping'){window.parent.postMessage({type:'plobs-preview-ready'},location.origin);return;}
   if(!message||message.type!=='plobs-preview'||!message.state||typeof message.state!=='object')return;
   if(message.phase==='exit'){
    syncStyledLower(message.state,'preview-exit');
