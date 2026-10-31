@@ -48,7 +48,7 @@ function Assert-Installation([string]$expectedVersion) {
     return $entries[0]
 }
 
-if ((Get-AppEntries).Count -ne 0 -or (Test-Path -LiteralPath $installedExe)) {
+if (@(Get-AppEntries).Count -ne 0 -or (Test-Path -LiteralPath $installedExe)) {
     throw 'La prueba exige un runner sin instalaciones previas de esta aplicación.'
 }
 
