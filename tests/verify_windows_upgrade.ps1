@@ -18,15 +18,25 @@ $installerPath = (Resolve-Path $CurrentInstaller).Path
 $installDir = Join-Path $env:LOCALAPPDATA 'Programs\ProduccionLiturgicaOBS'
 $installedExe = Join-Path $installDir 'ProduccionLiturgicaOBS.exe'
 $dataDir = Join-Path $env:LOCALAPPDATA 'ProduccionLiturgicaOBS'
-$uninstallKey = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall'
+$uninstallRoots = @(
+    'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall',
+    'HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall',
+    'HKLM:\Software\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall'
+)
 $appName = 'Producción Litúrgica OBS'
+$appId = 'EFB4DB79-93C8-4E2B-83BA-8EFC2109B0EA'
 
 function Get-AppEntries {
-    @(Get-ChildItem -Path $uninstallKey -ErrorAction SilentlyContinue | ForEach-Object {
-        Get-ItemProperty -LiteralPath $_.PSPath
-    } | Where-Object {
-        $_.PSObject.Properties['DisplayName'] -and $_.DisplayName -eq $appName
-    })
+    foreach ($root in $uninstallRoots) {
+        if (-not (Test-Path -LiteralPath $root)) { continue }
+        Get-ChildItem -LiteralPath $root | ForEach-Object {
+            $key = $_
+            $item = Get-ItemProperty -LiteralPath $key.PSPath
+            $byId = $key.PSChildName.Contains($appId)
+            $byName = $item.PSObject.Properties['DisplayName'] -and $item.DisplayName -eq $appName
+            if ($byId -or $byName) { $item }
+        }
+    }
 }
 
 function Assert-Installation([string]$expectedVersion) {
@@ -35,6 +45,7 @@ function Assert-Installation([string]$expectedVersion) {
     }
     $entries = @(Get-AppEntries)
     if ($entries.Count -ne 1) {
+        Write-Host "Halladas $($entries.Count) entradas. Rutas de registro revisadas: $($uninstallRoots -join ', ')."
         throw "Se esperó una sola entrada en aplicaciones instaladas; hay $($entries.Count)."
     }
     if ($entries[0].DisplayVersion -ne $expectedVersion) {
