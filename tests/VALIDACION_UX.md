@@ -74,3 +74,15 @@ Entorno: Windows, navegador Chromium/Edge y dock de OBS cuando esté integrado.
 - [ ] Con OBS en programa, distinguir **EN PROGRAMA** de **AL AIRE**; no atribuir a un ítem un estado confirmado si la fuente no está activa o WebSocket no responde.
 - [ ] Cerrar y reabrir el programa: comprobar persistencia de producciones, logos y ajustes de rotación.
 - [ ] Comprobar la salida real dentro de OBS y, si difiere del navegador, revisar tamaño de Fuente de navegador (1920 × 1080), zoom y fuentes instaladas. Los motores Chromium de OBS y del navegador pueden presentar pequeñas diferencias de tipografía.
+
+## Editor de pantalla de inicio por capas (rama `feature/layered-intro-composer`)
+
+- [ ] Entrar desde el panel y la biblioteca. Abrir una composición existente, crear una nueva, duplicar y cambiar de plantilla. Confirmar que se conservan nombre, duración y capas después de reiniciar.
+- [ ] Mover texto, logo, liturgia y contador con mouse y teclado. Redimensionar desde la esquina y verificar que no pueden salir del lienzo. Bloquear/ocultar/reordenar y utilizar Deshacer/Rehacer.
+- [ ] Cambiar texto a una frase larga, borrar el contenido y verificar límites de lectura en pantalla. Probar cuenta circular, digital y con barra, con minutos personalizados.
+- [ ] Cargar fondo JPG y luego video MP4/WEBM, comprobar reproducción sin audio, bucle, encuadre y reacción a ocultar/mostrar. Subir imagen a una segunda capa y conservar el logo institucional sin alterarlo.
+- [ ] Confirmar que la vista previa usa `overlay.html?preview=1` con escala 16:9 y que las guías no aparecen en la Fuente de navegador real de OBS.
+- [ ] Guardar cambios mientras otro gráfico está publicado: no debe variar el gráfico visible. Lanzar desde Biblioteca o Dock y verificar que la plantilla queda congelada hasta un nuevo lanzamiento.
+- [ ] Pulsar Imagen limpia y Restaurar. Confirmar que el fondo, las capas, su orden y la cuenta regresiva regresan al estado previsto; Reiniciar, Pausar y Continuar funcionan sin arrancar al lanzar.
+- [ ] Probar fondos y videos, fuente de navegador de 1920×1080 y animación en OBS Windows real. Si la fuente está oculta detrás de otra fuente, el estado no debe prometer visibilidad a nivel de píxel.
+- [ ] Verificar el EXE y ZIP Windows: que se empaquete `compositor.html`, que pueda guardar archivos en los datos locales y que la actualización conserve `producciones.json` y `media/`.

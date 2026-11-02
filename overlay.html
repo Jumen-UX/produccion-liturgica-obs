@@ -35,7 +35,36 @@
 @keyframes ltRiseIn{from{opacity:0;transform:translateY(45px)}to{opacity:1;transform:none}}@keyframes ltRiseOut{from{opacity:1;transform:none}to{opacity:0;transform:translateY(45px)}}
 @keyframes ltZoomIn{from{opacity:0;transform:scale(.88)}to{opacity:1;transform:scale(1)}}@keyframes ltZoomOut{from{opacity:1;transform:scale(1)}to{opacity:0;transform:scale(.88)}}
 @media(prefers-reduced-motion:reduce){.styled-lower.enter,.styled-lower.leaving{animation:none!important}.styled-lower.enter{opacity:1}.styled-lower.leaving{opacity:0}}
+</style><style>
+/* Compositor: coordenadas reales de la Fuente de navegador 1920x1080. */
+.composition{position:absolute;inset:0;width:1920px;height:1080px;overflow:hidden;background:transparent}
+.composition:not(.hidden)+#wait{display:none!important}
+.canvas:has(.composition:not(.hidden)) #socialWait{display:none!important}
+.comp-layer{position:absolute;display:flex;align-items:center;overflow:hidden;box-sizing:border-box;white-space:pre-wrap;overflow-wrap:anywhere;pointer-events:none}
+.comp-layer.comp-text,.comp-layer.comp-liturgy{line-height:1.15}
+.comp-layer img,.comp-layer video{display:block;width:100%;height:100%;object-fit:contain}
+.comp-layer.comp-background img,.comp-layer.comp-background video{object-fit:cover}
+.comp-timer{display:flex;flex-direction:column;align-items:center;justify-content:center;width:100%;height:100%;gap:12px;text-align:center}
+.comp-timer strong{font-size:clamp(36px,4.5vw,92px);font-variant-numeric:tabular-nums;line-height:1.12;font-weight:700}
+.comp-timer small{font-size:21px;text-transform:uppercase;letter-spacing:.17em;font-weight:700}
+.comp-timer.circle{width:min(100%,100%);aspect-ratio:1;height:auto;margin:auto;border-radius:50%;position:relative;background:conic-gradient(var(--accent) var(--progress),#ffffff24 var(--progress));padding:14px}
+.comp-timer.circle:before{content:"";position:absolute;inset:13px;background:var(--clock-bg,#102635);border-radius:50%}
+.comp-timer.circle>*{position:relative;z-index:1}
+.comp-timer.bar{gap:20px}.comp-meter{width:92%;height:13px;border-radius:99px;background:#ffffff30;overflow:hidden}.comp-meter>i{display:block;height:100%;width:var(--progress);background:var(--accent)}
+.comp-shape{border-radius:14px}
+@keyframes compFade{from{opacity:0}to{opacity:var(--layer-alpha)}}
+@keyframes compRise{from{opacity:0;transform:translateY(30px)}to{opacity:var(--layer-alpha);transform:none}}
+@keyframes compLeft{from{opacity:0;transform:translateX(-40px)}to{opacity:var(--layer-alpha);transform:none}}
+@keyframes compRight{from{opacity:0;transform:translateX(40px)}to{opacity:var(--layer-alpha);transform:none}}
+@keyframes compZoom{from{opacity:0;transform:scale(.9)}to{opacity:var(--layer-alpha);transform:none}}
+.comp-layer[data-enter="fade"]{animation:compFade var(--duration) ease-out both}
+.comp-layer[data-enter="rise"]{animation:compRise var(--duration) ease-out both}
+.comp-layer[data-enter="left"]{animation:compLeft var(--duration) ease-out both}
+.comp-layer[data-enter="right"]{animation:compRight var(--duration) ease-out both}
+.comp-layer[data-enter="zoom"]{animation:compZoom var(--duration) ease-out both}
+@media(prefers-reduced-motion:reduce){.comp-layer{animation:none!important}}
 </style></head><body><div class="canvas">
+<section id="composition" class="composition hidden" aria-label="Pantalla de inicio personalizada"></section>
 <section id="wait" class="hidden"><div class="bg"></div><img class="cover-photo hidden" id="coverPhoto" alt=""><div class="cover-shade hidden" id="coverShade"></div><div class="gridlight"></div><div id="particles"></div><header class="brand"><img id="waitLogo" class="hidden"><div class="mark"></div><div><span>Transmisión en directo · Celebración eucarística</span><strong><span id="brandName">Mi parroquia</span></strong></div></header><div class="wait-title"><h1 id="waitTitle">Santa Misa</h1><p id="waitSubtitle">En breve comenzaremos nuestra celebración</p></div><div id="slideCard" class="slide-card hidden"><img id="slideImg" class="hidden" alt=""><div class="slide-copy"><small>Información parroquial</small><h2 id="slideTitle"></h2><p id="slideBody"></p></div></div><div class="ring"><svg viewBox="0 0 120 120"><circle cx="60" cy="60" r="48"></circle><circle id="progress" class="progress" cx="60" cy="60" r="48"></circle></svg><div id="dot" class="dot"></div><div class="time"><span>COMENZAMOS EN</span><strong id="clock">15:00</strong></div></div><footer class="bottom"><div id="msg" class="message">Gracias por acompañarnos</div><div class="bar"><i id="bar"></i></div></footer></section>
 <div id="persistentLogo" class="logo-onair"><img id="persistentLogoImg" alt="Logo parroquial"><video id="persistentLogoVideo" muted autoplay loop playsinline preload="auto" style="display:none"></video></div><div id="socialDuring" class="social-float"><div class="social-items"></div><img class="social-qr hidden" alt="Código QR de la parroquia"></div><div id="socialWait" class="social-strip hidden"><div class="social-items"></div><img class="social-qr hidden" alt="Código QR de las redes parroquiales"></div><section id="lower" class="lower hidden"><div class="accent"></div><div class="content"><span id="eyebrow" class="eyebrow"></span><div id="maintext" class="maintext"></div><div id="subtext" class="subtext"></div></div></section>
 <section id="styledLower" class="styled-lower hidden" aria-label="Lower Third personalizado"><div class="style-panel"><div id="styledRole" class="style-role"></div><div id="styledName" class="style-name"></div><div id="styledSubtitle" class="style-subtitle"></div></div></section>
@@ -43,6 +72,63 @@
 <script>
 const el=id=>document.getElementById(id);const particles=el('particles');for(let i=0;i<48;i++){const d=document.createElement('i');d.className='particle';d.style.setProperty('--left',Math.random()*100+'%');d.style.setProperty('--dur',12+Math.random()*23+'s');d.style.setProperty('--move',(-180+Math.random()*360)+'px');d.style.animationDelay=(-Math.random()*35)+'s';particles.appendChild(d)}
 let oldMode='',messages=[],lastMsg=-1,lastSlide=-1;
+let compositionSignature='',compositionVideos=[];
+const safeCompositionMedia=value=>typeof value==='string'&&
+ (/^\/media\/[a-f0-9]{32}\.(png|jpg|webp|mp4|webm)$/.test(value)||
+  /^\/logo_parroquial\.(png|jpg|webp)(\?v=\d+)?$/.test(value));
+function renderComposition(s,mode){
+ const composition=s.composition;
+ const active=mode==='espera'&&composition?.version===1&&Array.isArray(composition.layers);
+ const frame=el('composition');frame.classList.toggle('hidden',!active);
+ if(!active){compositionVideos.forEach(video=>{if(!video.paused)video.pause()});return;}
+ const signature=JSON.stringify(composition);
+ if(signature!==compositionSignature){
+  compositionSignature=signature;frame.replaceChildren();compositionVideos=[];
+  for(const [index,layer] of composition.layers.entries()){
+   if(layer.visible===false)continue;
+   const node=document.createElement('div');node.className='comp-layer comp-'+layer.type;
+   node.dataset.layerId=layer.id;node.dataset.enter=layer.enter||'fade';
+   node.style.cssText=`left:${layer.x}px;top:${layer.y}px;width:${layer.w}px;height:${layer.h}px;z-index:${index+1};`;
+   node.style.setProperty('--duration',Math.max(150,Number(layer.duration)||650)+'ms');
+   node.style.setProperty('--layer-alpha',String(layer.opacity??1));
+   node.style.opacity=String(layer.opacity??1);
+   node.style.color=layer.color||'#fff';node.style.fontSize=(Number(layer.fontSize)||54)+'px';
+   node.style.fontWeight=String(layer.fontWeight||600);
+   node.style.textAlign=layer.align||'left';
+   node.style.justifyContent=({left:'flex-start',center:'center',right:'flex-end'})[layer.align]||'flex-start';
+   const source=layer.type==='logo'&&!layer.asset?s.logo:layer.asset;
+   if(layer.type==='background'||layer.type==='shape')node.style.background=layer.fill||'#102635';
+   if(['image','logo','background'].includes(layer.type)&&safeCompositionMedia(source)){
+    if(/\.(mp4|webm)$/.test(source)){
+     const video=document.createElement('video');video.src=source;video.muted=true;video.loop=true;
+     video.autoplay=true;video.playsInline=true;video.preload='metadata';
+     video.style.objectFit=layer.fit||'cover';node.append(video);compositionVideos.push(video);
+    }else{const image=document.createElement('img');image.src=source;image.alt='';
+     image.style.objectFit=layer.fit||'contain';node.append(image)}
+   }else if(layer.type==='text'||layer.type==='liturgy'){
+    node.textContent=layer.text||'';
+   }else if(layer.type==='timer'){
+    const clock=document.createElement('div');clock.className='comp-timer '+(layer.timerStyle||'circle');
+    clock.style.setProperty('--accent',layer.color||'#D6B678');
+    clock.style.setProperty('--clock-bg',layer.fill||'#102635');
+    const label=document.createElement('small');label.textContent=layer.text||'COMENZAMOS EN';
+    const digits=document.createElement('strong');digits.className='comp-digits';
+    clock.append(label,digits);
+    if(layer.timerStyle==='bar'){
+     const bar=document.createElement('div');bar.className='comp-meter';bar.append(document.createElement('i'));clock.append(bar);
+    }node.append(clock);
+   }
+   frame.append(node);
+  }
+ }
+ const remaining=Math.max(0,Number(s.remaining)||0),total=Math.max(1,60*(Number(s.timer_minutes)||composition.minutes||15));
+ const label=String(Math.floor(remaining/60)).padStart(2,'0')+':'+String(Math.floor(remaining%60)).padStart(2,'0');
+ for(const clock of frame.querySelectorAll('.comp-timer')){
+  clock.querySelector('.comp-digits').textContent=label;
+  clock.style.setProperty('--progress',Math.max(0,Math.min(100,remaining/total*100))+'%');
+ }
+ compositionVideos.forEach(video=>{if(video.paused)video.play().catch(()=>{})});
+}
 // Una red por turno: la lista emitida queda fijada al iniciar la rotación.
 const socialMarks={
  instagram:'<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5" fill="none" stroke="currentColor" stroke-width="2.4"/><circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" stroke-width="2.2"/><circle cx="17.5" cy="6.6" r="1.3" fill="currentColor"/></svg>',
@@ -108,6 +194,7 @@ function showSocial(s,mode){
  boxes[2].classList.toggle('show',allowed&&target===boxes[2]);
  boxes[2].classList.toggle('hidden-force',!allowed||target!==boxes[2]);
  boxes[2].classList.toggle('has-lower',mode==='lower_third');
+ renderComposition(s,mode);
 }
 
 let styledActive=false,styledTimer=null;

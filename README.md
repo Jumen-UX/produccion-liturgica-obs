@@ -49,6 +49,19 @@ Desde el panel principal entra a **Biblioteca de producciones**, o abre `http://
 
 Los Lower Thirds y los elementos de texto (títulos, lecturas, salmos, avisos y frases) admiten **lanzamiento individual** tanto desde la biblioteca como desde una sección específica del Dock. El diseño de cada Lower Third puede heredar la plantilla guardada en Estudio o personalizarla por elemento (nombre, cargo, plantilla, colores y animaciones). Los ítems sin soporte de lanzamiento siguen siendo **registros preparados**: vídeos, imágenes, créditos y otros formatos necesitan una fase posterior.
 
+### Compositor de pantalla de inicio por capas (fase inicial)
+
+Abre **Diseñar pantalla de inicio** desde el panel web o entra en `http://127.0.0.1:8765/compositor.html`.
+
+- Utiliza una plantilla existente o crea una nueva. Cada producción puede guardar varias pantallas de espera independientes.
+- El lienzo de referencia es **1920 × 1080**. Permite añadir texto, liturgia del día (introducida manualmente), cuenta regresiva circular/digital/con barra, logo, imagen/video y figuras. Las capas pueden moverse, redimensionarse, ocultarse, bloquearse y cambiarse de orden. El fondo permanece detrás.
+- Cada capa tiene color, transparencia y efecto de entrada. El editor permite deshacer y rehacer; guías y márgenes seguros solo aparecen durante la edición.
+- Permite subir PNG/JPG/WEBP o MP4/WEBM al almacenamiento local `media/`. El logo sin archivo individual utiliza el configurado en el panel. Los videos se reproducen sin sonido y en bucle; comprueba compatibilidad de códec en OBS Windows.
+- **Guardar composición no publica.** Una vez guardada, aparece en Biblioteca y Dock bajo **Pantallas de inicio**. Lanzar la pantalla no inicia automáticamente el temporizador ni reinicia una cuenta en marcha.
+- La vista previa utiliza el mismo `overlay.html?preview=1` de OBS, con estado separado. **Imagen limpia** y **Restaurar** recuperan una copia del estado publicado. Las ediciones posteriores al lanzamiento no cambian la salida hasta lanzarla otra vez.
+
+Alcance: esta primera fase trabaja con **pantallas completas de inicio** y textos litúrgicos manuales. Quedan pendientes las animaciones de salida por capa, grupos, recorte avanzado y composición simultánea sobre otros tipos de gráfico. Realizar prueba visual y de video en OBS real antes de una transmisión.
+
 ### Rotación individual de redes
 En la categoría **Redes sociales** añade tantos ítems como necesites. Cada registro tiene nombre, plataforma, usuario/enlace, frase e icono de la red. Puedes sustituir el icono por un PNG/JPG/WEBP propio desde el panel local. La lista incluye ejemplos editables; no se exige conectar cuentas externas.
 
@@ -115,7 +128,7 @@ Los colores de las fiestas y solemnidades deben comprobarse según el calendario
 
 ## Desarrollo
 
-`launcher.py`: aplicación de escritorio; `servidor.py`: servicio local y rutas HTTP; `lan_access.py`: credenciales, roles y servicio LAN; `login.html` y `remote.html`: acceso desde móviles; `obs_monitor.py`: consulta WebSocket local de OBS; `panel.html`: consola; `studio.html`: editor de Lower Thirds; `dock.html`: Dock de control; `overlay.html`: salida OBS. `PLAN_V9.md`: otras mejoras previstas, no implementadas.
+`launcher.py`: aplicación de escritorio; `servidor.py`: servicio local y rutas HTTP; `lan_access.py`: credenciales, roles y servicio LAN; `login.html` y `remote.html`: acceso desde móviles; `obs_monitor.py`: consulta WebSocket local de OBS; `panel.html`: consola; `studio.html`: editor de Lower Thirds; `compositor.html` y `layered_composition.py`: editor de inicio por capas y validación; `dock.html`: Dock de control; `overlay.html`: salida OBS. `PLAN_V9.md`: otras mejoras previstas, no implementadas.
 
 **Estado de esta rama de integración:** pruebas locales de contrato HTTP realizadas; validación visual y funcional en Windows/OBS y compilación de sus nuevos artefactos pendientes antes de integrar o publicar.
 

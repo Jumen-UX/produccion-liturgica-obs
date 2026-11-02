@@ -6,6 +6,7 @@ import re
 import threading
 import uuid
 from pathlib import Path
+from layered_composition import starter_composition, validate_composition
 
 TYPES = {
     "lower_third", "titulo", "lectura", "salmo", "aviso",
@@ -31,6 +32,7 @@ def social_settings(value):
     return {"duration": duration, "interval": interval, "loop": bool(value.get("loop", True)), "placement": placement}
 
 DEFAULT_ITEMS = [
+    {"type": "pantalla", "name": "Inicio clásico · 15 minutos", "data": starter_composition()},
     {"type": "lower_third", "name": "Celebrante (ejemplo)", "data": {"name": "P. Nombre Apellido", "role": "Celebrante"}},
     {"type": "lower_third", "name": "Lector (ejemplo)", "data": {"name": "Nombre de la persona", "role": "Primera lectura"}},
     {"type": "aviso", "name": "Aviso de ejemplo", "data": {"title": "Próxima actividad", "body": "Escribe aquí los detalles"}},
@@ -72,9 +74,11 @@ def _item(data, existing=None):
             "phrase": _text(payload.get("phrase", ""), 100),
             "logo": logo,
         }
+    if kind == "pantalla" and "layers" in payload:
+        payload = validate_composition(payload)
     # La biblioteca guarda solo datos declarativos JSON, nunca HTML ejecutable.
     encoded = json.dumps(payload, ensure_ascii=False, allow_nan=False)
-    if len(encoded.encode("utf-8")) > 12000:
+    if len(encoded.encode("utf-8")) > (32000 if kind == "pantalla" else 12000):
         raise ValueError("Configuración demasiado grande")
     return {
         "id": existing["id"] if existing else uuid.uuid4().hex,

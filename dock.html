@@ -136,7 +136,7 @@ function render(){
  renderLibrary();
  $('timer').textContent=String(Math.floor((live?.remaining||0)/60)).padStart(2,'0')+':'+String((live?.remaining||0)%60).padStart(2,'0');
 }
-const libraryTypeLabels={lower_third:'Lower Thirds',titulo:'Títulos',lectura:'Lecturas',salmo:'Salmos',aviso:'Avisos',frase:'Frases'};
+const libraryTypeLabels={pantalla:'Pantallas de inicio',lower_third:'Lower Thirds',titulo:'Títulos',lectura:'Lecturas',salmo:'Salmos',aviso:'Avisos',frase:'Frases'};
 const libraryTypes=new Set(Object.keys(libraryTypeLabels));
 function renderLibrary(){
  const production=library?.productions?.find(p=>p.id===library.active_id);
@@ -148,12 +148,15 @@ function renderLibrary(){
   for(const [type,label] of Object.entries(libraryTypeLabels)){
    const items=production.items.filter(item=>item.type===type);
    if(!items.length)continue;
-   const details=document.createElement('details');details.open=(type==='lower_third');const summary=document.createElement('summary');summary.textContent=label+' · '+items.length;details.append(summary);
+   const details=document.createElement('details');details.open=(type==='pantalla'||type==='lower_third');const summary=document.createElement('summary');summary.textContent=label+' · '+items.length;details.append(summary);
    for(const item of items){
     const row=document.createElement('div');row.className='library-item';row.dataset.itemId=item.id;row.dataset.productionId=production.id;
     const info=document.createElement('div');const title=document.createElement('strong');title.textContent=item.name;
-    const status=document.createElement('small');status.className='library-status';status.textContent=item.enabled?'Preparado':'Desactivado';info.append(title,status);
-    const b=document.createElement('button');b.textContent='▶ Lanzar';b.disabled=!item.enabled;b.className=item.enabled?'':'secondary';b.onclick=()=>perform(()=>command('library_launch',{production_id:production.id,item_id:item.id}),item.name+' enviado a OBS.');
+    const composed=type!=='pantalla'||Array.isArray(item.data?.layers);
+    const enabled=item.enabled&&composed;
+    row.dataset.needsDesign=composed?'0':'1';
+    const status=document.createElement('small');status.className='library-status';status.textContent=!composed?'Diseñar capas en el panel':enabled?'Preparado':'Desactivado';info.append(title,status);
+    const b=document.createElement('button');b.textContent='▶ Lanzar';b.disabled=!enabled;b.className=enabled?'':'secondary';b.onclick=()=>perform(()=>command('library_launch',{production_id:production.id,item_id:item.id}),item.name+' enviado a OBS.');
     row.append(info,b);details.append(row);
    }root.append(details)
   }
@@ -166,7 +169,7 @@ function renderLibrary(){
   row.classList.toggle('active',selected);
   row.querySelector('.library-status').textContent=selected?
       status==='al_aire'?'● AL AIRE':status==='en_programa'?'EN PROGRAMA':status==='fuera_de_programa'?'FUERA DE PROGRAMA':'PUBLICADO · SIN VERIFICAR':
-      row.querySelector('button').disabled?'Desactivado':'Preparado';
+      row.querySelector('button').disabled?(row.dataset.needsDesign==='1'?'Diseñar capas en el panel':'Desactivado'):'Preparado';
  }
  const rotation=live?.social_rotation;
  const running=!!(rotation&&live.social_now!==false);

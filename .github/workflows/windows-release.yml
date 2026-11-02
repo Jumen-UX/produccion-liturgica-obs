@@ -2,7 +2,7 @@ name: Windows · compilar y distribuir
 
 on:
   pull_request:
-    branches: [main, feature/graphics-live-integration, feature/lan-remote-access]
+    branches: [main, feature/graphics-live-integration, feature/lan-remote-access, feature/production-graphic-library]
   push:
     tags:
       - 'v*'
@@ -41,13 +41,13 @@ jobs:
         shell: pwsh
         run: |
           python -m pip install --disable-pip-version-check pyinstaller pystray pillow qrcode
-          python -m compileall -q launcher.py servidor.py lan_access.py obs_monitor.py production_library.py
+          python -m compileall -q launcher.py servidor.py lan_access.py obs_monitor.py production_library.py layered_composition.py
           python -m unittest discover -s tests -p 'test_*.py' -v
 
       - name: Compilar ejecutable portátil
         shell: pwsh
         run: |
-          pyinstaller --noconfirm --clean --onefile --windowed --name ProduccionLiturgicaOBS --add-data "panel.html;." --add-data "overlay.html;." --add-data "dock.html;." --add-data "studio.html;." --add-data "biblioteca.html;." --add-data "login.html;." --add-data "remote.html;." --hidden-import pystray._win32 launcher.py
+          pyinstaller --noconfirm --clean --onefile --windowed --name ProduccionLiturgicaOBS --add-data "panel.html;." --add-data "overlay.html;." --add-data "dock.html;." --add-data "studio.html;." --add-data "biblioteca.html;." --add-data "compositor.html;." --add-data "login.html;." --add-data "remote.html;." --hidden-import pystray._win32 launcher.py
           if (!(Test-Path "dist/ProduccionLiturgicaOBS.exe")) { throw "No se generó el ejecutable" }
 
       - name: Probar inicio y servidor HTTP
@@ -66,7 +66,8 @@ jobs:
                 $dock = Invoke-WebRequest -Uri "http://127.0.0.1:8765/dock.html" -TimeoutSec 2
                 $studio = Invoke-WebRequest -Uri "http://127.0.0.1:8765/studio.html" -TimeoutSec 2
                 $library = Invoke-WebRequest -Uri "http://127.0.0.1:8765/biblioteca.html" -TimeoutSec 2
-                if ($state.parish_name -and $page.StatusCode -eq 200 -and $overlay.StatusCode -eq 200 -and $dock.StatusCode -eq 200 -and $studio.StatusCode -eq 200 -and $library.StatusCode -eq 200) { $ready = $true; break }
+                $composer = Invoke-WebRequest -Uri "http://127.0.0.1:8765/compositor.html" -TimeoutSec 2
+                if ($state.parish_name -and $page.StatusCode -eq 200 -and $overlay.StatusCode -eq 200 -and $dock.StatusCode -eq 200 -and $studio.StatusCode -eq 200 -and $library.StatusCode -eq 200 -and $composer.StatusCode -eq 200) { $ready = $true; break }
               } catch { }
             }
             if (!$ready) { throw "El panel y el overlay no respondieron" }

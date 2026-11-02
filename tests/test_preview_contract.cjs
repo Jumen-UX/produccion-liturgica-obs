@@ -7,7 +7,7 @@ const vm=require('node:vm');
 const read=name=>fs.readFileSync(path.join(__dirname,'..',name),'utf8');
 
 test('scripts de salida, estudio, biblioteca y dock sin errores de sintaxis',()=>{
- for(const page of ['overlay.html','studio.html','biblioteca.html','dock.html']){
+ for(const page of ['overlay.html','studio.html','biblioteca.html','compositor.html','dock.html']){
   const source=read(page);
   const scripts=[...source.matchAll(/<script>([\s\S]*?)<\/script>/g)];
   assert.ok(scripts.length,page+' requiere script');
@@ -29,6 +29,17 @@ test('la vista previa no consulta ni publica estado en vivo',()=>{
  assert.match(source,/if\(previewMode\)\{/);
  assert.match(source,/event\.origin!==location\.origin/);
  assert.match(source,/else\{\s*async function tick\(/);
+});
+test('editor de capas utiliza el motor OBS con preparación separada de lanzamiento',()=>{
+ const html=read('compositor.html'),out=read('overlay.html');
+ assert.match(html,/src="\/overlay\.html\?preview=1"/);
+ assert.match(html,/type:'plobs-preview'/);
+ assert.match(html,/1920px/);
+ assert.match(html,/function startPointer/);
+ assert.match(html,/action:itemId\?'update':'add'/);
+ assert.match(html,/command:'library_launch'/);
+ assert.match(out,/function renderComposition/);
+ assert.match(out,/compositionSignature/);
 });
 test('rotación de redes selecciona una sola entrada por turno',()=>{
  const source=read('overlay.html');
