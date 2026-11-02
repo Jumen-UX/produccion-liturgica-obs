@@ -1,0 +1,373 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Compositor de inicio · Producción Litúrgica OBS</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#edf1f6;color:#182d44;font:14px 'Segoe UI',Arial,sans-serif}
+header{background:#102842;color:white;padding:15px 3%;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+header h1{font-size:21px;margin:0 0 4px}header small{color:#e5c68a}nav{display:flex;gap:15px;flex-wrap:wrap}nav a{color:#f3dfb2}
+button,input,select,textarea{font:inherit}button{border:0;border-radius:8px;padding:10px 12px;background:#17436e;color:#fff;font-weight:700;cursor:pointer}
+button.secondary{color:#183450;background:#e7eef5}button.safe{background:#237150}button.warning{background:#a57b3a}
+button:disabled{opacity:.48;cursor:not-allowed}button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid #d3a95d;outline-offset:2px}
+input,select,textarea{width:100%;min-height:38px;border:1px solid #b8c8da;border-radius:7px;padding:8px;background:#fff;color:#183450}
+input[type=checkbox]{width:auto;min-height:0}input[type=color]{padding:2px;height:42px}
+textarea{min-height:84px;resize:vertical}label{display:block;font-size:12px;font-weight:700;margin:10px 0 5px}
+.top-controls{display:flex;gap:9px;flex-wrap:wrap;align-items:end;background:#fff;padding:12px 3%;border-bottom:1px solid #dce4ed}
+.top-controls label{margin:0 0 4px}.top-controls .picker{width:min(260px,100%)}.top-controls .name{flex:1;min-width:200px}.top-controls .tools{display:flex;gap:7px;flex-wrap:wrap}
+.workspace{display:grid;grid-template-columns:270px minmax(420px,1fr) 300px;gap:12px;padding:13px;max-width:1900px;margin:auto}
+.card{background:#fff;border:1px solid #d8e1eb;border-radius:12px;padding:14px;min-width:0}
+h2{font-size:16px;margin:0 0 10px}.hint{color:#5d6f84;line-height:1.5;font-size:12px}
+.add-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}.add-grid button{text-align:left;font-size:12px;padding:10px}
+.layers{margin-top:12px;display:flex;flex-direction:column;gap:6px}.layer{display:flex;align-items:center;gap:5px;background:#f2f6f9;border:1px solid #d3dfe9;border-radius:8px;padding:6px}
+.layer.selected{border-color:#bc8a38;background:#fff7e7}.layer-name{flex:1;text-align:left;background:transparent;color:#1a344b;padding:5px;font-size:12px;min-width:0;overflow-wrap:anywhere}
+.layer .icon{padding:5px 6px;background:#e2eaf2;color:#244058;min-height:30px}.layer .icon[aria-pressed=true]{background:#244c72;color:#fff}.layer button:disabled{opacity:.35}
+.canvas-head{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+.canvas-head .tools{display:flex;gap:6px;align-items:center}
+.canvas-wrap{width:100%;background:#091a2a;border-radius:11px;overflow:hidden;aspect-ratio:16/9;position:relative;box-shadow:0 8px 20px #071c3026}
+.canvas-wrap iframe{position:absolute;left:0;top:0;border:0;width:1920px;height:1080px;transform-origin:top left;pointer-events:none}
+.handles{position:absolute;inset:0;touch-action:none;pointer-events:none}
+.handle{position:absolute;pointer-events:auto;border:2px solid #e7c381;cursor:move;touch-action:none;outline:1px solid #183c60}
+.handle.active{border-color:#55d1ff;box-shadow:0 0 0 2px #0008}.handle .resize{position:absolute;right:-7px;bottom:-7px;width:14px;height:14px;background:#55d1ff;border:2px solid #153a53;cursor:nwse-resize}
+.safe-zone{pointer-events:none;position:absolute;inset:5%;border:1px dashed #fff8;z-index:35}.safe-zone[hidden],.handles[hidden]{display:none}
+.status{min-height:20px;color:#236d4d;font-size:13px;margin:10px 0}.status.error{color:#a12a2a}
+.properties label{margin-top:8px}.properties .twocol{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.properties .twocol>div{min-width:0}.properties .row{display:flex;gap:8px;align-items:center}
+.file-tools{display:flex;gap:7px;align-items:center;margin-top:8px}.file-tools button{white-space:nowrap}
+.panel-note{border-radius:8px;background:#f1f6fa;padding:10px;color:#475f76;font-size:12px}
+.timer-settings{display:flex;align-items:end;gap:10px;margin-bottom:12px;flex-wrap:wrap}.timer-settings label{margin:0 0 4px}
+.timer-settings input{max-width:100px}.timer-shortcuts{display:flex;gap:6px;flex-wrap:wrap}.timer-shortcuts button{padding:9px 12px}
+@media(max-width:1200px){.workspace{grid-template-columns:220px minmax(0,1fr)}.properties{grid-column:1/-1;display:block}.properties .twocol{max-width:500px}}
+@media(max-width:760px){.workspace{grid-template-columns:1fr}.canvas-card{grid-row:1}.top-controls{padding:12px}.workspace{padding:9px}.properties{grid-column:auto}}
+</style></head><body>
+<header><div><h1>Diseñar pantalla de inicio</h1><small>Composiciones por capas · 1920 × 1080 · no altera la emisión mientras editas</small></div>
+<nav><a href="/panel.html">Panel principal</a><a href="/biblioteca.html">Biblioteca</a><a href="/dock.html">Dock OBS</a></nav></header>
+<div class="top-controls">
+ <div class="picker"><label for="templates">Pantallas guardadas</label><select id="templates"><option value="">Nueva composición</option></select></div>
+ <div class="name"><label for="compositionName">Nombre de la plantilla</label><input id="compositionName" maxlength="110" value="Inicio personalizado"></div>
+ <div class="tools"><button class="secondary" id="newTemplate">+ Nueva</button><button class="secondary" id="duplicateTemplate">Duplicar</button>
+ <button class="safe" id="saveTemplate">Guardar composición</button><button class="warning" id="launchTemplate" disabled>Lanzar en OBS</button></div>
+</div>
+<main class="workspace">
+ <aside class="card"><h2>Capas</h2><p class="hint">Arrastra sobre el lienzo y organiza desde aquí qué elementos quedan delante.</p>
+ <div class="add-grid">
+  <button data-add="text" class="secondary">+ Texto</button><button data-add="liturgy" class="secondary">+ Liturgia</button>
+  <button data-add="timer" class="secondary">+ Contador</button><button data-add="logo" class="secondary">+ Logo</button>
+  <button data-add="image" class="secondary">+ Imagen/video</button><button data-add="shape" class="secondary">+ Forma</button>
+ </div>
+ <div class="layers" id="layerList" aria-label="Orden de capas"></div>
+ <p class="hint">La primera capa del listado aparece delante. Fondo permanece detrás. El ojo oculta; el candado evita mover accidentalmente.</p>
+ <div class="tools"><button id="undo" class="secondary">↶ Deshacer</button> <button id="redo" class="secondary">↷ Rehacer</button></div>
+ </aside>
+ <section class="card canvas-card"><div class="canvas-head"><div><h2>Lienzo de la transmisión</h2><span class="hint">Vista previa del mismo renderizador utilizado por OBS</span></div>
+ <div class="tools"><label style="margin:0"><input type="checkbox" id="showGuides" checked> Guías</label></div></div>
+ <div class="timer-settings"><div><label for="minutes">Duración inicial (minutos)</label><input id="minutes" type="number" min="1" max="999" step="1" value="15"></div>
+ <div><label>Sumar al tiempo preparado</label><div class="timer-shortcuts" aria-label="Aumentar la duración del contador">
+ <button type="button" data-add-minutes="1" class="secondary">+1 min</button><button type="button" data-add-minutes="5" class="secondary">+5 min</button>
+ <button type="button" data-add-minutes="10" class="secondary">+10 min</button><button type="button" data-add-minutes="15" class="secondary">+15 min</button></div></div>
+ <span class="hint">Estos ajustes se guardan con la composición y no alteran la salida actual. En el Dock puedes sumar minutos al reloj activo.</span></div>
+ <div class="canvas-wrap" id="canvas"><iframe id="preview" src="/overlay.html?preview=1" sandbox="allow-scripts allow-same-origin" title="Vista previa de la composición"></iframe>
+ <div class="safe-zone" id="safeZone"></div><div class="handles" id="handles" aria-label="Mover y redimensionar capas"></div></div>
+ <p class="hint">Clic para seleccionar; arrastra para mover. Usa la esquina inferior derecha para cambiar el tamaño o las flechas del teclado para ajustar la posición.</p>
+ <p id="status" class="status" role="status" aria-live="polite"></p>
+ </section>
+ <aside class="card properties"><h2>Propiedades de la capa</h2><div id="props"><p class="hint">Selecciona un elemento para editarlo.</p></div></aside>
+</main>
+<script>
+'use strict';
+// El editor modifica únicamente la biblioteca local. El iframe comparte el motor de OBS.
+const $=id=>document.getElementById(id),clone=value=>structuredClone(value);
+const names={background:'Fondo',text:'Texto',liturgy:'Liturgia del día',timer:'Cuenta regresiva',
+ logo:'Logo',image:'Imagen o video',shape:'Forma'};
+let prototype=null;
+const starter=()=>clone(prototype);
+let library=null,baseState={},composition={version:1,minutes:15,layers:[]},itemId=null,selected=null;
+let changed=true,ready=false,history=[],future=[],scale=1,showGuides=true,pointer=null;
+const templates=()=>(library?.productions.find(x=>x.id===library.active_id)?.items||[]).filter(x=>x.type==='pantalla');
+const current=()=>composition.layers.find(x=>x.id===selected);
+const clamp=(n,min,max)=>Math.max(min,Math.min(max,n));
+function tell(message,error=false){$('status').textContent=message;$('status').className='status'+(error?' error':'')}
+function markChanged(){changed=true;$('launchTemplate').disabled=true;tell('Hay cambios sin guardar. OBS conserva el gráfico publicado.')}
+function remember(){history.push(clone(composition));if(history.length>45)history.shift();future=[]}
+function mutate(fn){remember();fn();markChanged();redraw()}
+function undo(){if(!history.length)return;future.push(clone(composition));composition=history.pop();markChanged();redraw(true)}
+function redo(){if(!future.length)return;history.push(clone(composition));composition=future.pop();markChanged();redraw(true)}
+function fetchJSON(path,body){
+ return fetch(path,{method:body?'POST':'GET',cache:'no-store',
+  headers:body?{'Content-Type':'application/json'}:{},body:body?JSON.stringify(body):undefined})
+  .then(async response=>{const value=await response.json();if(!response.ok)throw Error(value.error||'Error del servidor');return value});
+}
+function newLayer(type){
+ const id='capa_'+Date.now().toString(36)+'_'+Math.random().toString(36).slice(2,8);
+ const layer={id,type,name:names[type],x:350,y:250,w:620,h:170,
+  visible:true,locked:false,opacity:1,color:'#FFFFFF',fill:'#152941',
+  text:'',fontSize:54,fontWeight:600,align:'left',asset:'',fit:'contain',
+  timerStyle:'circle',enter:'fade',exit:'fade',duration:650};
+ if(type==='text'){layer.text='Escribe tu mensaje'}
+ if(type==='liturgy'){layer.text='Liturgia del día';layer.color='#E1C58C'}
+ if(type==='timer'){Object.assign(layer,{x:1180,y:300,w:430,h:430,color:'#D6B678'})}
+ if(type==='logo'){Object.assign(layer,{x:125,y:100,w:180,h:180})}
+ if(type==='image'){Object.assign(layer,{x:600,y:360,w:560,h:400})}
+ if(type==='shape'){Object.assign(layer,{x:330,y:780,w:700,h:16,fill:'#D6B678'})}
+ return layer;
+}
+function add(type){if(composition.layers.length>=30)return tell('Máximo 30 capas por pantalla.',true);
+ const layer=newLayer(type);mutate(()=>{composition.layers.push(layer);selected=layer.id})}
+function reorder(id,direction){
+ const from=composition.layers.findIndex(x=>x.id===id);
+ const to=from+direction;
+ if(from<=0||to<=0||to>=composition.layers.length)return;
+ mutate(()=>{composition.layers.splice(to,0,composition.layers.splice(from,1)[0])});
+}
+function button(label,action,style='secondary'){
+ const b=document.createElement('button');b.type='button';b.textContent=label;b.className=style;b.onclick=action;return b;
+}
+function renderLayers(){
+ const root=$('layerList');root.replaceChildren();
+ for(let index=composition.layers.length-1;index>=0;index--){
+  const layer=composition.layers[index],line=document.createElement('div');
+  line.className='layer'+(selected===layer.id?' selected':'');
+  const choose=button(layer.name,()=>{selected=layer.id;renderLayers();renderProps();renderHandles()},'layer-name');
+  const eye=button(layer.visible===false?'◌':'◉',()=>mutate(()=>{layer.visible=layer.visible===false}), 'icon');
+  eye.title=layer.visible===false?'Mostrar capa':'Ocultar capa';eye.setAttribute('aria-label',eye.title);
+  const lock=button(layer.locked?'🔒':'🔓',()=>mutate(()=>{layer.locked=!layer.locked}),'icon');
+  lock.disabled=layer.type==='background';lock.title='Bloquear/desbloquear capa';
+  const up=button('↑',()=>reorder(layer.id,1),'icon');up.disabled=index===composition.layers.length-1||layer.type==='background';
+  const down=button('↓',()=>reorder(layer.id,-1),'icon');down.disabled=index<=1||layer.type==='background';
+  line.append(choose,eye,lock,up,down);root.append(line);
+ }
+ $('undo').disabled=!history.length;$('redo').disabled=!future.length;
+}
+function addField(labelText,key,type='text',options=null){
+ const wrapper=document.createElement('div'),label=document.createElement('label');
+ label.textContent=labelText;const id='prop-'+key;label.htmlFor=id;let field;
+ if(type==='textarea')field=document.createElement('textarea');
+ else if(options){field=document.createElement('select');
+  for(const [value,text] of Object.entries(options)){const o=document.createElement('option');o.value=value;o.textContent=text;field.append(o)}}
+ else{field=document.createElement('input');field.type=type}
+ const defaults={color:'#FFFFFF',fill:'#102635',fontSize:54,fontWeight:600,
+  enter:'fade',exit:'fade',duration:650,fit:'contain'};
+ field.id=id;field.value=key==='opacity'?Math.round((current()?.opacity??1)*100):
+  (current()?.[key]??defaults[key]??'');
+ field.disabled=key==='x'||key==='y'||key==='w'||key==='h'?current()?.type==='background':false;
+ const apply=()=>{
+  const layer=current();if(!layer)return;
+  let value=field.value;
+  if(key==='fontWeight')value=Number(value);
+  if(type==='number'){
+   if(value==='')return;
+   value=Number(value);if(!Number.isFinite(value))return;
+   if(key==='opacity')value=clamp(value,0,100)/100;
+   else if(key==='fontSize')value=clamp(Math.round(value),16,180);
+   else if(key==='duration')value=clamp(Math.round(value),150,2500);
+   else if(key==='fontWeight')value=Number(value);
+   else if(['x','y','w','h'].includes(key)){
+    value=Math.round(value);
+    if(key==='x')value=clamp(value,0,1920-layer.w);
+    if(key==='y')value=clamp(value,0,1080-layer.h);
+    if(key==='w')value=clamp(value,30,1920-layer.x);
+    if(key==='h')value=clamp(value,20,1080-layer.y);
+   }
+  }
+  remember();layer[key]=value;markChanged();
+  renderHandles();sendPreview();if(key==='name')renderLayers();
+ };
+ field.addEventListener(type==='text'||type==='textarea'||type==='color'?'input':'change',apply);
+ wrapper.append(label,field);return wrapper;
+}
+function renderProps(){
+ const root=$('props');root.replaceChildren();const layer=current();
+ if(!layer){root.textContent='Selecciona una capa.';return}
+ const summary=document.createElement('div');summary.className='panel-note';
+ summary.textContent=names[layer.type]+' · '+(layer.locked?'Posición bloqueada':'Puedes moverla en el lienzo');
+ root.append(summary,addField('Nombre de la capa','name'));
+ if(['text','liturgy'].includes(layer.type))root.append(addField('Texto','text','textarea'));
+ if(layer.type==='timer')root.append(addField('Diseño de la cuenta regresiva','timerStyle','select',
+  {circle:'Circular',digital:'Digital',bar:'Con barra'}),addField('Texto sobre el reloj','text'));
+ if(['background','shape'].includes(layer.type))root.append(addField('Color del fondo o figura','fill','color'));
+ if(['text','liturgy','timer'].includes(layer.type)){
+  root.append(addField('Color del texto o contador','color','color'));
+  if(layer.type!=='timer')root.append(addField('Tamaño del texto (px)','fontSize','number'),
+   addField('Alineación','align','select',{left:'Izquierda',center:'Centrado',right:'Derecha'}),
+   addField('Grosor','fontWeight','select',{'400':'Normal','500':'Medio','600':'Seminegrita','700':'Negrita','800':'Extra negrita'}));
+ }
+ if(['background','logo','image'].includes(layer.type)){
+  const description=document.createElement('p');description.className='hint';
+  description.textContent=layer.type==='logo'?'Si no eliges archivo, utiliza el logo configurado en el panel.':'Admite archivos locales, sin enlaces externos.';
+  root.append(description);
+  const file=document.createElement('input');file.type='file';file.accept='image/png,image/jpeg,image/webp,video/mp4,video/webm';
+  file.setAttribute('aria-label','Seleccionar imagen o video');file.onchange=()=>uploadFile(file);
+  root.append(file);
+  if(layer.asset){const asset=document.createElement('p');asset.className='hint';asset.textContent='Archivo: '+layer.asset;
+   root.append(asset,button('Quitar archivo',()=>mutate(()=>{layer.asset=''}),'secondary'))}
+  root.append(addField('Ajuste del archivo','fit','select',{contain:'Mostrar completo',cover:'Cubrir espacio'}));
+ }
+ if(layer.type!=='background'){
+  const coord=document.createElement('div');coord.className='twocol';
+  for(const [key,label] of [['x','Posición X'],['y','Posición Y'],['w','Ancho'],['h','Alto']])coord.append(addField(label,key,'number'));
+  root.append(coord);
+ }
+ root.append(addField('Opacidad (0 a 100 %)','opacity','number'));
+ if(layer.type!=='background')root.append(
+  addField('Entrada','enter','select',{fade:'Desvanecer',left:'Desde izquierda',right:'Desde derecha',rise:'Elevar',zoom:'Zoom',none:'Sin efecto'}),
+  addField('Salida prevista','exit','select',{fade:'Desvanecer',left:'Desde izquierda',right:'Desde derecha',rise:'Elevar',zoom:'Zoom',none:'Sin efecto'}),
+  addField('Duración de animación (ms)','duration','number'));
+ if(layer.type!=='background')root.append(button('Eliminar esta capa',()=>{
+  if(confirm('¿Eliminar «'+layer.name+'»?'))mutate(()=>{composition.layers=composition.layers.filter(x=>x.id!==layer.id);selected=composition.layers.at(-1)?.id});
+ },'secondary'));
+}
+async function uploadFile(input){
+ const layer=current(),file=input.files?.[0];if(!file||!layer)return;
+ const isVideo=['video/mp4','video/webm'].includes(file.type);
+ if(!isVideo&&!['image/png','image/jpeg','image/webp'].includes(file.type))return tell('Solo PNG, JPG, WEBP, MP4 o WEBM.',true);
+ if(file.size>(isVideo?35:5)*1024*1024)return tell('Archivo demasiado grande (imágenes 5 MB; video 35 MB).',true);
+ try{
+  const response=await fetch(isVideo?'/api/logo-video':'/api/image',{
+   method:'POST',headers:{'Content-Type':file.type},body:file});
+  const result=await response.json();if(!response.ok)throw Error(result.error||'No se pudo cargar el archivo');
+  mutate(()=>{layer.asset=result.url;layer.fit=layer.type==='background'?'cover':'contain'});
+  tell('Archivo cargado localmente. Guarda la composición para conservar el cambio.');
+ }catch(error){tell(error.message,true)}
+}
+function renderHandles(){
+ const root=$('handles');root.replaceChildren();root.hidden=!showGuides;
+ $('safeZone').hidden=!showGuides;if(!showGuides)return;
+ for(const layer of composition.layers){
+  if(layer.type==='background'||layer.visible===false)continue;
+  const node=document.createElement('div');node.className='handle'+(selected===layer.id?' active':'');
+  node.style.left=layer.x/1920*100+'%';node.style.top=layer.y/1080*100+'%';
+  node.style.width=layer.w/1920*100+'%';node.style.height=layer.h/1080*100+'%';
+  node.dataset.id=layer.id;node.tabIndex=0;node.title=layer.name+(layer.locked?' (bloqueada)':' (arrastra)');
+  node.setAttribute('aria-label','Mover '+layer.name);
+  node.onpointerdown=event=>startPointer(event,layer,false);
+  node.onkeydown=event=>{
+   if(layer.locked||!['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(event.key))return;
+   event.preventDefault();const step=event.shiftKey?10:1;
+   mutate(()=>{layer.x=clamp(layer.x+(event.key==='ArrowLeft'?-step:event.key==='ArrowRight'?step:0),0,1920-layer.w);
+    layer.y=clamp(layer.y+(event.key==='ArrowUp'?-step:event.key==='ArrowDown'?step:0),0,1080-layer.h)});
+  };
+  const resize=document.createElement('span');resize.className='resize';
+  resize.title='Redimensionar';resize.onpointerdown=event=>startPointer(event,layer,true);
+  if(selected===layer.id&&!layer.locked)node.append(resize);
+  root.append(node);
+ }
+}
+function startPointer(event,layer,resizing){
+ if(event.button!==0)return;
+ event.preventDefault();event.stopPropagation();
+ selected=layer.id;renderLayers();renderProps();renderHandles();
+ if(layer.locked)return;
+ remember();const canvas=$('canvas').getBoundingClientRect();
+ pointer={id:event.pointerId,layer,originX:event.clientX,originY:event.clientY,
+  x:layer.x,y:layer.y,w:layer.w,h:layer.h,resizing,scale:canvas.width/1920};
+ $('handles').setPointerCapture(event.pointerId);
+}
+$('handles').addEventListener('pointermove',event=>{
+ if(!pointer||event.pointerId!==pointer.id)return;
+ const p=pointer,dx=Math.round((event.clientX-p.originX)/p.scale),dy=Math.round((event.clientY-p.originY)/p.scale);
+ if(p.resizing){p.layer.w=clamp(p.w+dx,30,1920-p.x);p.layer.h=clamp(p.h+dy,20,1080-p.y)}
+ else{p.layer.x=clamp(p.x+dx,0,1920-p.w);p.layer.y=clamp(p.y+dy,0,1080-p.h)}
+ renderHandles();sendPreview();
+});
+function endPointer(event){
+ if(!pointer||event.pointerId!==pointer.id)return;
+ try{$('handles').releasePointerCapture(event.pointerId)}catch(e){}
+ pointer=null;markChanged();renderProps();renderLayers();
+}
+$('handles').addEventListener('pointerup',endPointer);
+$('handles').addEventListener('pointercancel',endPointer);
+function scaleCanvas(){
+ scale=$('canvas').clientWidth/1920;
+ $('preview').style.transform='scale('+scale+')';
+ renderHandles();
+}
+function sendPreview(){
+ if(!ready||location.origin==='null')return;
+ const state={...baseState,mode:'espera',visible:true,composition,
+  remaining:composition.minutes*60,timer_minutes:composition.minutes,running:false,
+  social_rotation:null,social_now:false,social_enabled:false,social_during_mass:false};
+ $('preview').contentWindow.postMessage({type:'plobs-preview',state},location.origin);
+}
+function redraw(includeProps=true){
+ $('minutes').value=composition.minutes;renderLayers();renderHandles();
+ if(includeProps)renderProps();sendPreview();
+}
+function refreshSelector(){
+ const list=templates(),select=$('templates');
+ select.replaceChildren();const newOption=document.createElement('option');newOption.value='';newOption.textContent='Nueva composición';select.append(newOption);
+ for(const item of list){const option=document.createElement('option');option.value=item.id;option.textContent=item.name;select.append(option)}
+ select.value=itemId||'';
+}
+function choose(item){
+ itemId=item?.id||null;composition=item?.data?.layers?clone(item.data):starter();
+ selected=composition.layers.find(x=>x.type==='timer')?.id||composition.layers.at(-1)?.id;
+ $('compositionName').value=item?.name||'Inicio personalizado';
+ changed=!itemId;history=[];future=[];refreshSelector();
+ $('launchTemplate').disabled=!itemId;redraw();
+ tell(itemId?'Plantilla cargada. Puedes editar sin afectar a OBS.':'Nueva composición; guarda para poder lanzarla.');
+}
+async function save(){
+ const name=$('compositionName').value.trim();
+ if(!name)return tell('Escribe un nombre para la composición.',true);
+ if(!composition.layers.some(x=>x.type==='background'))return tell('Agrega una capa de fondo.',true);
+ $('saveTemplate').disabled=true;
+ try{
+  const request={action:itemId?'update':'add',item_id:itemId,
+   item:{type:'pantalla',name,enabled:true,data:clone(composition)}};
+  library=await fetchJSON('/api/productions',request);
+  if(!itemId)itemId=library.productions.find(x=>x.id===library.active_id).items.at(-1).id;
+  composition=clone(templates().find(x=>x.id===itemId).data);
+  changed=false;refreshSelector();$('launchTemplate').disabled=false;redraw();
+  tell('Composición guardada. No se ha modificado lo que aparece en OBS.');
+ }catch(error){tell(error.message,true)}finally{$('saveTemplate').disabled=false}
+}
+async function launch(){
+ if(changed||!itemId)return tell('Guarda los cambios antes de lanzar.',true);
+ if(!confirm('¿Mostrar «'+$('compositionName').value+'» en la salida de OBS?'))return;
+ try{await fetchJSON('/api/update',{command:'library_launch',
+  production_id:library.active_id,item_id:itemId});
+  tell('Pantalla enviada a la salida local. Comprueba el indicador de OBS.');
+ }catch(error){tell(error.message,true)}
+}
+$('minutes').addEventListener('change',()=>mutate(()=>{
+ composition.minutes=clamp(Math.round(Number($('minutes').value)||15),1,999);
+}));
+document.querySelectorAll('[data-add-minutes]').forEach(b=>b.onclick=()=>{
+ const delta=Number(b.dataset.addMinutes);
+ if(composition.minutes>=999)return tell('Límite de duración: 999 minutos.',true);
+ mutate(()=>{composition.minutes=clamp(composition.minutes+delta,1,999)});
+});
+$('compositionName').addEventListener('input',markChanged);
+$('templates').onchange=()=>{
+ if(changed&&!confirm('¿Descartar los cambios sin guardar?')){refreshSelector();return}
+ choose(templates().find(x=>x.id===$('templates').value));
+};
+$('newTemplate').onclick=()=>{if(changed&&!confirm('¿Descartar los cambios sin guardar?'))return;choose(null)};
+$('duplicateTemplate').onclick=()=>{
+ const duplicate=clone(composition),oldName=$('compositionName').value||'Inicio';
+ choose(null);composition=duplicate;selected=composition.layers.at(-1)?.id;
+ $('compositionName').value=oldName+' (copia)';markChanged();redraw();
+};
+$('saveTemplate').onclick=save;$('launchTemplate').onclick=launch;
+$('undo').onclick=undo;$('redo').onclick=redo;
+$('showGuides').onchange=()=>{showGuides=$('showGuides').checked;renderHandles()};
+document.querySelectorAll('[data-add]').forEach(b=>b.onclick=()=>add(b.dataset.add));
+window.addEventListener('message',event=>{
+ if(event.source===$('preview').contentWindow&&event.origin===location.origin&&event.data?.type==='plobs-preview-ready'){
+  ready=true;scaleCanvas();sendPreview();
+ }
+});
+$('preview').addEventListener('load',()=>{
+ scaleCanvas();if(location.origin!=='null')$('preview').contentWindow.postMessage({type:'plobs-preview-ping'},location.origin);
+});
+if(typeof ResizeObserver!=='undefined')new ResizeObserver(scaleCanvas).observe($('canvas'));
+async function init(){
+ try{
+  [library,baseState,prototype]=await Promise.all([
+   fetchJSON('/api/productions'),fetchJSON('/api/draft'),fetchJSON('/api/composition-starter')]);
+  const requested=new URLSearchParams(location.search).get('item');
+  const fresh=new URLSearchParams(location.search).has('new');
+  const item=!fresh&&(templates().find(x=>x.id===requested)||(!requested?templates()[0]:null));
+  choose(item||null);
+ }catch(error){tell('No se pudo cargar la biblioteca: '+error.message,true)}
+}
+init();
+</script></body></html>

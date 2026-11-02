@@ -8,6 +8,7 @@ from obs_monitor import (OBSAuthRejected, OBSAuthRequired, OBSConnectionError,
                          OBSMonitor, OBSProtocolIncompatible, graphic_state)
 from lan_access import LANAccess, LANRuntime, local_addresses
 from production_library import ProductionLibrary
+from layered_composition import starter_composition, validate_composition
 
 ROOT=Path(os.environ.get("LITURGIA_APP_DIR",Path(__file__).resolve().parent)).resolve()
 DATA=ROOT/"configuracion.json"
@@ -41,7 +42,7 @@ def validated_lower_third(value):
     result["opacity"]=max(25,min(100,int(result["opacity"])))
     return result
 DEFAULT={
-"parish_name":"Mi parroquia","mode":"espera","title":"Santa Misa","subtitle":"Bienvenidos a nuestra celebración","detail":"Bienvenidos","reference":"","visible":True,"logo":"","ticker":"","ticker_visible":False,"announcements":["Gracias por acompañarnos","En breve comenzaremos"],"slides":[],"slides_enabled":True,"slide_interval":12,"cover_mode":"default","cover_image":"","social_enabled":False,"social_closing":True,"social_accounts":{"instagram":"","facebook":"","youtube":"","whatsapp":""},"social_qr":"","social_during_mass":False,"social_every":150,"social_duration":9,"social_now":None,"logo_persistent":True,"logo_video":"","participants":{"celebrante":"","diacono":"","lectores":["",""],"monitores":[""]},"role":"celebrante","role_index":0,"theme":"ordinario","colors":{"primary":"#2E986E","background":"#0A1C29","accent":"#D6B678","text":"#F4F7F9","panel":"#102C35"},"lower_third":copy.deepcopy(LOWER_DEFAULT),"timer_minutes":15,"remaining":900,"running":False,"end_at":None}
+"parish_name":"Mi parroquia","mode":"espera","title":"Santa Misa","subtitle":"Bienvenidos a nuestra celebración","detail":"Bienvenidos","reference":"","visible":True,"logo":"","ticker":"","ticker_visible":False,"announcements":["Gracias por acompañarnos","En breve comenzaremos"],"slides":[],"slides_enabled":True,"slide_interval":12,"cover_mode":"default","cover_image":"","social_enabled":False,"social_closing":True,"social_accounts":{"instagram":"","facebook":"","youtube":"","whatsapp":""},"social_qr":"","social_during_mass":False,"social_every":150,"social_duration":9,"social_now":None,"logo_persistent":True,"logo_video":"","participants":{"celebrante":"","diacono":"","lectores":["",""],"monitores":[""]},"role":"celebrante","role_index":0,"theme":"ordinario","colors":{"primary":"#2E986E","background":"#0A1C29","accent":"#D6B678","text":"#F4F7F9","panel":"#102C35"},"lower_third":copy.deepcopy(LOWER_DEFAULT),"composition":None,"timer_minutes":15,"remaining":900,"running":False,"end_at":None}
 try:
     saved=json.loads(DATA.read_text(encoding="utf-8"))
     draft={**DEFAULT,**{k:v for k,v in saved.items() if k in DEFAULT and k not in ("running","end_at","remaining")}}
@@ -51,16 +52,16 @@ try:draft["lower_third"]=validated_lower_third(draft.get("lower_third",{}))
 except (ValueError,TypeError):draft["lower_third"]=copy.deepcopy(LOWER_DEFAULT)
 live=copy.deepcopy(draft)
 live.update(running=False,end_at=None,remaining=int(live["timer_minutes"])*60)
-EDIT=set(DEFAULT)-{"running","end_at","remaining","logo","timer_minutes"}
+EDIT=set(DEFAULT)-{"running","end_at","remaining","logo","timer_minutes","composition"}
 # La restauración recupera la última salida visible, no el borrador en edición.
 SCREEN_STATE_FIELDS=set(DEFAULT)-{"running","end_at","remaining","timer_minutes"}
 last_visible_state=None
 MODES={"espera","cintillo","lectura","salmo","evangelio","homilia","ofertorio","comunion","avisos","cierre","limpio","incidencia","participante","lower_third"}
 THEMES={"ordinario","adviento","navidad","cuaresma","pascua","pentecostes","martires","blanco","rojo","verde","morado","rosa","negro","personalizado"}
 MEDIA_RE=re.compile(r"^/media/[a-f0-9]{32}\.(?:png|jpg|webp|mp4|webm)$")
-STATIC_PAGES={"/panel.html","/overlay.html","/dock.html","/studio.html","/biblioteca.html","/login.html","/remote.html"}
+STATIC_PAGES={"/panel.html","/overlay.html","/dock.html","/studio.html","/biblioteca.html","/compositor.html","/login.html","/remote.html"}
 REMOTE_READ={"/api/state","/api/draft","/api/obs-status","/api/session","/api/events"}
-REMOTE_COMMANDS={"publish","launch","clean","restore","timer_start","timer_pause","timer_reset","social_show","social_hide","social_rotation_start","social_rotation_stop","logo_toggle"}
+REMOTE_COMMANDS={"publish","launch","clean","restore","timer_start","timer_pause","timer_reset","timer_adjust","social_show","social_hide","social_rotation_start","social_rotation_stop","logo_toggle"}
 def persist():
     DATA.write_text(json.dumps({k:v for k,v in draft.items() if k not in ("running","end_at","remaining")},ensure_ascii=False,indent=2),encoding="utf-8")
 def snapshot():
@@ -196,6 +197,8 @@ class Handler(SimpleHTTPRequestHandler):
             with LOCK:self.respond(snapshot() if path=="/api/state" else copy.deepcopy(draft))
         elif path=="/api/productions" and not self.remote:
             self.respond(PRODUCTIONS.snapshot())
+        elif path=="/api/composition-starter" and not self.remote:
+            self.respond(starter_composition())
         elif path=="/api/obs-config":
             self.respond(OBS_MONITOR.configuration())
         elif path=="/api/obs-diagnostic" and not self.remote:
@@ -256,7 +259,8 @@ class Handler(SimpleHTTPRequestHandler):
         try:
             size=int(self.headers.get("Content-Length","0"))
             if size<1 or size>35*1024*1024:raise ValueError("Tamaño inválido")
-            if path in ("/api/obs-config","/api/obs-detect","/api/productions") and size>16384:raise ValueError("Configuración OBS demasiado grande")
+            if path in ("/api/obs-config","/api/obs-detect") and size>16384:raise ValueError("Configuración OBS demasiado grande")
+            if path=="/api/productions" and size>65536:raise ValueError("Composición demasiado grande")
             if self.remote and (path!="/api/update" or size>4096):raise ValueError("Solicitud remota no permitida")
             if self.remote and self.headers.get("Content-Type","").split(";")[0]!="application/json":
                 return self.respond({"error":"Solo se acepta JSON"},415)
@@ -310,24 +314,33 @@ class Handler(SimpleHTTPRequestHandler):
                     if draft["mode"]=="incidencia" and data.get("confirm_incidence") is not True:
                         raise ValueError("Confirma expresamente el aviso de dificultades técnicas antes de mostrarlo")
                     for k in EDIT:live[k]=copy.deepcopy(draft[k])
+                    live["composition"]=None
                     live.pop("library_item",None)
                 elif cmd=="launch":
                     mode=data.get("mode")
                     if mode not in ("espera","participante","lower_third"):raise ValueError("Gráfico no disponible para lanzamiento directo")
                     if mode=="espera" and draft["mode"]!="espera":raise ValueError("Prepara primero la pantalla de espera en el panel")
                     for k in EDIT:live[k]=copy.deepcopy(draft[k])
-                    live.update(mode=mode,visible=True)
+                    live.update(mode=mode,visible=True,composition=None)
                     live.pop("library_item",None)
                 elif cmd=="library_launch":
                     item=PRODUCTIONS.get_item(data.get("production_id"),data.get("item_id"))
                     kind=item["type"];payload=item["data"]
                     if kind=="lower_third":
                         live["lower_third"]=validated_lower_third({**draft["lower_third"],**payload})
-                        live.update(mode="lower_third",visible=True)
+                        live.update(mode="lower_third",visible=True,composition=None)
                     elif kind in ("titulo","lectura","salmo","aviso","frase"):
                         live.update(mode={"titulo":"cintillo","lectura":"lectura","salmo":"salmo","aviso":"avisos","frase":"cintillo"}[kind],
                                     title=str(payload.get("title") or payload.get("text") or item["name"])[:180],
-                                    detail=str(payload.get("body",""))[:500],reference="",subtitle="",visible=True)
+                                    detail=str(payload.get("body",""))[:500],reference="",subtitle="",visible=True,composition=None)
+                    elif kind=="pantalla":
+                        composition=validate_composition(payload)
+                        # El comando de lanzamiento no pone el reloj en marcha ni reinicia uno activo.
+                        if not live.get("running"):
+                            live.update(timer_minutes=composition["minutes"],remaining=composition["minutes"]*60,
+                                        running=False,end_at=None)
+                        live.update(mode="espera",visible=True,composition=copy.deepcopy(composition),
+                                    title=item["name"])
                     else:
                         raise ValueError("Este tipo aún no dispone de lanzamiento individual")
                     live["library_item"]={"production_id":data.get("production_id"),"item_id":item["id"]}
@@ -355,6 +368,19 @@ class Handler(SimpleHTTPRequestHandler):
                     n=max(1,min(999,int(data.get("minutes",15))))
                     for obj in (draft,live):obj.update(timer_minutes=n,remaining=n*60,running=False,end_at=None)
                     persist()
+                elif cmd=="timer_adjust":
+                    # Ampliación operativa del reloj actual: no edita el borrador ni detiene el conteo.
+                    minutes=data.get("minutes")
+                    if type(minutes) is not int or minutes not in (1,5,10,15):
+                        raise ValueError("Solo puedes sumar 1, 5, 10 o 15 minutos")
+                    snapshot()
+                    old_total=int(live["timer_minutes"])
+                    total=min(999,old_total+minutes)
+                    added=(total-old_total)*60
+                    if not added:raise ValueError("Límite de duración: 999 minutos")
+                    live["timer_minutes"]=total
+                    live["remaining"]=min(999*60,int(live["remaining"])+added)
+                    if live["running"]:live["end_at"]=time.time()+live["remaining"]
                 elif cmd=="timer_start":
                     if not live["running"] and live["remaining"]>0:live.update(running=True,end_at=time.time()+live["remaining"])
                 elif cmd=="timer_pause":
