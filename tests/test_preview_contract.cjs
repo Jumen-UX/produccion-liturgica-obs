@@ -41,6 +41,19 @@ test('editor de capas utiliza el motor OBS con preparación separada de lanzamie
  assert.match(out,/function renderComposition/);
  assert.match(out,/compositionSignature/);
 });
+test('el contador dispone de duración editable y ajustes rápidos en todas las superficies',()=>{
+ const editor=read('compositor.html');
+ assert.match(editor,/id="minutes"[^>]*type="number"/);
+ for(const minutes of [1,5,10,15]){
+  assert.match(editor,new RegExp('data-add-minutes="'+minutes+'"'));
+  for(const surface of ['dock.html','panel.html','remote.html']){
+   assert.match(read(surface),new RegExp('data-timer-add="'+minutes+'"|data-minutes="'+minutes+'"'));
+  }
+ }
+ for(const surface of ['dock.html','panel.html','remote.html']){
+  assert.match(read(surface),/timer_adjust/);
+ }
+});
 test('rotación de redes selecciona una sola entrada por turno',()=>{
  const source=read('overlay.html');
  assert.match(source,/const selected=allowed\?entries\[idx\]:null/);

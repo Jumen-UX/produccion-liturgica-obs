@@ -61,7 +61,7 @@ THEMES={"ordinario","adviento","navidad","cuaresma","pascua","pentecostes","mart
 MEDIA_RE=re.compile(r"^/media/[a-f0-9]{32}\.(?:png|jpg|webp|mp4|webm)$")
 STATIC_PAGES={"/panel.html","/overlay.html","/dock.html","/studio.html","/biblioteca.html","/compositor.html","/login.html","/remote.html"}
 REMOTE_READ={"/api/state","/api/draft","/api/obs-status","/api/session","/api/events"}
-REMOTE_COMMANDS={"publish","launch","clean","restore","timer_start","timer_pause","timer_reset","social_show","social_hide","social_rotation_start","social_rotation_stop","logo_toggle"}
+REMOTE_COMMANDS={"publish","launch","clean","restore","timer_start","timer_pause","timer_reset","timer_adjust","social_show","social_hide","social_rotation_start","social_rotation_stop","logo_toggle"}
 def persist():
     DATA.write_text(json.dumps({k:v for k,v in draft.items() if k not in ("running","end_at","remaining")},ensure_ascii=False,indent=2),encoding="utf-8")
 def snapshot():
@@ -368,6 +368,19 @@ class Handler(SimpleHTTPRequestHandler):
                     n=max(1,min(999,int(data.get("minutes",15))))
                     for obj in (draft,live):obj.update(timer_minutes=n,remaining=n*60,running=False,end_at=None)
                     persist()
+                elif cmd=="timer_adjust":
+                    # Ampliación operativa del reloj actual: no edita el borrador ni detiene el conteo.
+                    minutes=data.get("minutes")
+                    if type(minutes) is not int or minutes not in (1,5,10,15):
+                        raise ValueError("Solo puedes sumar 1, 5, 10 o 15 minutos")
+                    snapshot()
+                    old_total=int(live["timer_minutes"])
+                    total=min(999,old_total+minutes)
+                    added=(total-old_total)*60
+                    if not added:raise ValueError("Límite de duración: 999 minutos")
+                    live["timer_minutes"]=total
+                    live["remaining"]=min(999*60,int(live["remaining"])+added)
+                    if live["running"]:live["end_at"]=time.time()+live["remaining"]
                 elif cmd=="timer_start":
                     if not live["running"] and live["remaining"]>0:live.update(running=True,end_at=time.time()+live["remaining"])
                 elif cmd=="timer_pause":

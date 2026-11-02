@@ -81,6 +81,9 @@ body{max-width:1320px;margin-inline:auto}
 .library-item button{padding:7px 10px;min-height:34px}
 .library-section details{border:1px solid #35475c;border-radius:8px;padding:10px;margin:7px 0}
 .library-section .social-actions{margin-top:12px}
+.timer-shortcuts{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px;margin:9px 0}
+.timer-shortcuts button{padding:9px 5px;min-width:0}
+@media(max-width:310px){.timer-shortcuts{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:310px){.library-item{grid-template-columns:1fr}.library-item button{width:100%}}
 </style></head><body>
 <header><h1>Producción Litúrgica · Control gráfico</h1><span class="status" id="status">Conectando…</span></header>
@@ -97,7 +100,9 @@ body{max-width:1320px;margin-inline:auto}
 <div class="social-actions buttons"><button id="startSocial">▶ Rotar redes</button><button id="stopSocial" class="secondary">■ Detener rotación</button></div>
 <div id="socialRotationStatus" class="hint" role="status">Redes sin rotación activa.</div></section>
 <section class="timer-section"><h2>Cuenta regresiva</h2><div class="timer" id="timer">15:00</div>
-<div class="buttons"><button id="timerStart">Iniciar</button><button id="timerPause" class="secondary">Pausar</button><button id="timerReset" class="secondary">Reiniciar</button></div></section>
+<div class="buttons"><button id="timerStart">Iniciar</button><button id="timerPause" class="secondary">Pausar</button><button id="timerReset" class="secondary">Reiniciar</button></div>
+<div class="timer-shortcuts" aria-label="Agregar minutos al tiempo restante"><button class="secondary" data-timer-add="1">+1 min</button><button class="secondary" data-timer-add="5">+5 min</button><button class="secondary" data-timer-add="10">+10 min</button><button class="secondary" data-timer-add="15">+15 min</button></div>
+<p class="hint">Suma minutos al reloj activo sin detenerlo. Para establecer la duración exacta, utiliza el panel web.</p></section>
 <section class="aux-section"><details><summary>Logo y redes sociales</summary>
 <div class="buttons"><button id="logo" class="secondary">Mostrar/quitar logo</button><button id="social" class="secondary">Mostrar redes</button></div>
 <button id="hideSocial" class="secondary" style="margin-top:7px;width:100%">Ocultar redes</button></details></section>
@@ -188,6 +193,10 @@ $('restore').onclick=()=>perform(()=>command('restore'),'Gráfico restaurado.');
 $('timerStart').onclick=()=>perform(()=>command('timer_start'),'Cuenta regresiva iniciada.');
 $('timerPause').onclick=()=>perform(()=>command('timer_pause'),'Cuenta regresiva pausada.');
 $('timerReset').onclick=()=>perform(()=>command('timer_reset'),'Cuenta regresiva reiniciada.');
+document.querySelectorAll('[data-timer-add]').forEach(button=>button.onclick=()=>{
+ const minutes=Number(button.dataset.timerAdd);
+ return perform(()=>command('timer_adjust',{minutes}),'Se agregaron '+minutes+' min al contador.');
+});
 $('logo').onclick=()=>perform(()=>command('logo_toggle'),'Visibilidad del logo actualizada.');
 $('social').onclick=()=>perform(()=>command('social_show'),'Redes sociales activadas.');
 $('hideSocial').onclick=()=>perform(()=>command('social_hide'),'Redes sociales ocultadas.');

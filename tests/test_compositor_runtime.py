@@ -90,6 +90,32 @@ class ComposerRuntimeTests(unittest.TestCase):
                 "type": "pantalla", "name": "Riesgo", "data": comp}})
         self.assertEqual(ctx.exception.code, 400)
 
+    def test_timer_shortcuts_extend_remaining_without_stopping_or_editing_draft(self):
+        self.request('/api/update', {'command': 'timer_set', 'minutes': 12})
+        self.assertEqual(self.request('/api/update', {'command': 'timer_adjust', 'minutes': 1})['live']['remaining'], 780)
+        self.assertEqual(self.request('/api/update', {'command': 'timer_adjust', 'minutes': 5})['live']['remaining'], 1080)
+        self.request('/api/update', {'command': 'timer_start'})
+        before = self.request('/api/state')
+        after = self.request('/api/update', {'command': 'timer_adjust', 'minutes': 10})['live']
+        self.assertTrue(after['running'])
+        self.assertEqual(after['timer_minutes'], 28)
+        self.assertGreaterEqual(after['remaining']-before['remaining'], 598)
+        self.assertLessEqual(after['remaining']-before['remaining'], 600)
+        self.assertEqual(self.request('/api/draft')['timer_minutes'], 12)
+        self.request('/api/update', {'command': 'timer_pause'})
+        self.request('/api/update', {'command': 'timer_adjust', 'minutes': 15})
+        reset = self.request('/api/update', {'command': 'timer_reset'})['live']
+        self.assertFalse(reset['running'])
+        self.assertEqual(reset['remaining'], 43 * 60)
+        for value in (0, -1, 99, '5', True):
+            with self.subTest(value=value), self.assertRaises(HTTPError) as error:
+                self.request('/api/update', {'command': 'timer_adjust', 'minutes': value})
+            self.assertEqual(error.exception.code, 400)
+        self.request('/api/update', {'command': 'timer_set', 'minutes': 999})
+        with self.assertRaises(HTTPError) as error:
+            self.request('/api/update', {'command': 'timer_adjust', 'minutes': 1})
+        self.assertEqual(error.exception.code, 400)
+
 
 if __name__ == "__main__":
     unittest.main()
