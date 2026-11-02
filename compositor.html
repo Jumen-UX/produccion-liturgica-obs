@@ -140,7 +140,10 @@ function addField(labelText,key,type='text',options=null){
  else if(options){field=document.createElement('select');
   for(const [value,text] of Object.entries(options)){const o=document.createElement('option');o.value=value;o.textContent=text;field.append(o)}}
  else{field=document.createElement('input');field.type=type}
- field.id=id;field.value=key==='opacity'?Math.round((current()?.opacity??1)*100):(current()?.[key]??'');
+ const defaults={color:'#FFFFFF',fill:'#102635',fontSize:54,fontWeight:600,
+  enter:'fade',exit:'fade',duration:650,fit:'contain'};
+ field.id=id;field.value=key==='opacity'?Math.round((current()?.opacity??1)*100):
+  (current()?.[key]??defaults[key]??'');
  field.disabled=key==='x'||key==='y'||key==='w'||key==='h'?current()?.type==='background':false;
  const apply=()=>{
   const layer=current();if(!layer)return;
